@@ -6,6 +6,19 @@ MYSQL = mysql $(DATABASE) $(MYSQLFLAGS)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
+DATE = 20161101
+
+.PHONY: mysql mysql-%
+
+mysql: mysql-$(DATE)
+
+mysql-$(DATE): mysql-%: csv/bus_time_%.csv
+	$(MYSQL) --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
+		IGNORE INTO TABLE positions \
+		FIELDS TERMINATED BY ',' \
+		LINES TERMINATED BY '\r\n' \
+		IGNORE 1 LINES"
+
 csv/%.csv: xz/%.csv.xz | csv
 	@rm -f $@
 	xz -d $<
@@ -17,6 +30,6 @@ xz/bus_time_%.csv.xz: | xz
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
 
 init: sql/archive_schema.sql
-	$(MYSQL) < $@
+	$(MYSQL) < $<
 
 csv xz: ; mkdir -p $@
