@@ -1,7 +1,7 @@
 # archive_schema.sql
 
-DROP TABLE IF EXISTS bus_time;
-CREATE TABLE bus_time (
+DROP TABLE IF EXISTS positions;
+CREATE TABLE positions (
 	timestamp_utc datetime NOT NULL,
 	vehicle_id smallint(4) ZEROFILL NOT NULL,
 	latitude decimal(8, 6) NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE bus_time (
 	bearing decimal(5, 2) NOT NULL,
 	progress tinyint(1) NOT NULL,
 	service_date date NOT NULL,
-	trip_index int NOT NULL,
+	trip_id int NOT NULL,
 	block_assigned tinyint(1) NOT NULL,
 	next_stop_id int(6),
 	dist_along_route decimal(8, 2),
