@@ -9,7 +9,7 @@ CREATE TABLE positions (
 	bearing decimal(5, 2) NOT NULL,
 	progress tinyint(1) NOT NULL,
 	service_date date NOT NULL,
-	trip_id int NOT NULL,
+	trip_id VARCHAR(255) NOT NULL,
 	block_assigned tinyint(1) NOT NULL,
 	next_stop_id int(6),
 	dist_along_route decimal(8, 2),
