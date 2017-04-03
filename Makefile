@@ -12,7 +12,7 @@ DATE = 20161101
 
 mysql: mysql-$(DATE)
 
-mysql-$(DATE): mysql-%: csv/bus_time_%.csv
+mysql-%: csv/bus_time_%.csv
 	$(MYSQL) --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
 		IGNORE INTO TABLE positions \
 		FIELDS TERMINATED BY ',' \
