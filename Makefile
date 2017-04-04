@@ -32,4 +32,8 @@ xz/bus_time_%.csv.xz: | xz
 init: sql/archive_schema.sql
 	$(MYSQL) < $<
 
+clean:
+	rm -rf xz csv
+	$(MYSQL) -e "DROP TABLE IF EXISTS positions"
+
 csv xz: ; mkdir -p $@
