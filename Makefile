@@ -31,7 +31,7 @@ mysql-%: csv/bus_time_%.csv
 
 csv/%.csv: xz/%.csv.xz | csv
 	@rm -f $@
-	xz -d $<
+	xz -kd $<
 	mv $(<D)/$(@F) $@
 
 xz/bus_time_%.csv.xz: | xz
