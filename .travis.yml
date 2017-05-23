@@ -1,0 +1,23 @@
+services: postgresql
+language: python
+
+python:
+  - 3.5
+
+env:
+  global:
+    - secure: VaCN6TB3bhszQpGoKrPmSgsKmQFdx1Nem0Hrp8A3csCLdAjtkCaoHQsXz3kOcvrrt53CTzWmYmytdbVYij9v4qd/HqGuW+UuZn0A7dCMTnWtsb4L25D7652lId8/68a+nvRQwjChXwa7a7Ed/Gm2yFZBcMj7Zrd3chsbJscLyDR7lBdWb/jD9IIHqNJsqM7loHCK2Oop1VyTsx3XPGE6NXYvWmxbUD4VK/3qgimup0TOdM+GdR0rgvJeEYtVtcO1b4O17VXmAunWoIl/9edJXsA9sqY75xaX4+Q/3n/KyBNJkQBv6VzS/lRuKHzfQP+EoRU19ZChMX8w7NtvzsDaGjpocszZgUyFiUZnvS8NyDlFoKy11cIjhJBWfZpbz8AoY8Cmpi0dH7hq1YpS8L6AVcnYqgBq9N2zp6WaaEyvdBslAwpOMvTLX9DB/2FqemwNOOdmCm1BvS+GLSw3gxPRfukW1AtpTLRRxlucWvE2pAV2qE2vFvZwi6dfWIa5McjpN4V08r2Kum7p4DcFcJiVJipw4PS1vEbGkcKYZBGWqFaO9xmyK+Thj993P9la+gfOxCCBlLcSUdAZ8xx/HMU5zheH5d6ERtGZDeYppSWHrWmCUJyBCm9cdKarUNTjpd24L2rK1YC7jykM6UyovBcoeXd7ooN3CoLYfSQBf/saTM8=
+    - secure: EAcrDRddoBnZTtI1Y0l2ia7zU4ZaNTeIabyrQ4SYvkXCgs6hCbK9y8QtMOxVFcBehRoSPBoFTeoE8TQLgzzpfViGAhuBe0/8REa8NegZXmY9wkaAoGEL93z1KaBQhH0c/RgnQiNqnGDUx/oCStEKa/EaHCgub27796hKJKBdh6quuFbhLbO+pJgxOSQtRhFWf13s9rha8eYD8Ev8QbKAq3zQqa0fl3UlW7l0YXWA8oNbhrFSQOxBIs8/ZPLsBPjDeNJI/IOwELQAiCU31qQ5FYeCQo2zNtsWS1TP/NJnqSrZu4hkajsYTw2tTh3KpqhdCn4oU5+b3Lx5NbaRuoRX7PReg4VNr1eJWFrtz0AnRmy4D7BxiZvXuNXg2PnuN5XfczMJfYH2Ezsdd/bm1bQdWHL5o5RqLxNaC3I8WZmFSNzvp+mF5RcjKRfNYkJd8nGMytyNNtPJA4JbzUrILw526/VAE3hIPa4NM7ATLttpJInom496iojXky7YceyWzhm8yj//+Mg7vnQSDpNOKqOwzAdVpJbfOrsR+XFe65VRuLBRqBt75xkBYCbZLnPIvcYjVP1P6zcSR0+81uBTe2uXHyPwcnKJWZeEmPq7lXfEERLkHQuqWQesemuWJV822Dw1Lv7V3Ztv5IRNJOmMBN1bXRW2jIhtecvSdUIhddl5ZrY=
+
+  - CMD=download
+  - CMD=scrape_mta
+  - CMD=scrape_mbta
+
+install:
+  - pip install -r requirements.txt
+
+before_script:
+  - make init PSQLFLAGS="-U postgres"
+
+script:
+  - make $CMD DATE=20170101 PSQLFLAGS="-U postgres"' DATABASE=postgres

@@ -35,15 +35,15 @@ This includes the Google Protobuf library, which is useful for GTFS-Realtime API
 
 The scrapers depend on the environment variables `MTA_KEY` and `MBTA_KEY`.
 
-Download the current positions from the MTA API and save in `mtadb.positions`:
+Scrapers have been tested with Python 3.4 and above. Earlier versions of Python (e.g. 2.7) will likely work, but no guarantees.
 
+Download the current positions from the MTA API and save in `mtadb.positions`:
 ```
 export MTA_KEY=xyz123
 python3 src/scrape_mta.py mtadb
 ```
 
 Download the current positions from the MBTA API and save in `mbtadb.positions`:
-
 ```
 export MBTA_KEY=xyz123
 python3 src/scrape_mbta.py mbtadb

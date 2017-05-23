@@ -1,5 +1,7 @@
 shell = bash
 
+PYTHON=python
+
 MYSQLFLAGS =
 DATABASE =
 MYSQL = mysql $(DATABASE) $(MYSQLFLAGS)
@@ -11,9 +13,13 @@ ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
 DATE = 20161101
 
-.PHONY: mysql-% psql psql-% psql_init mysql_init download mysql_download
+.PHONY: mysql-% psql psql-% psql_init mysql_init download mysql_download \
+	scrape_mbta scrape_mt
 
 .PRECIOUS: csv/bus_time_%.csv.xz
+
+scrape_mbta scrape_mta: %: 
+	$(PYTHON) src/$*.py $(DATABASE)
 
 download: psql-$(DATE)
 
