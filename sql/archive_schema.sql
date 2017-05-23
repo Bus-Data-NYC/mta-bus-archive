@@ -1,4 +1,3 @@
--- archive_schema.sql
 DROP TABLE IF EXISTS positions;
 CREATE TABLE positions (
     timestamp_utc TIMESTAMP NOT NULL,

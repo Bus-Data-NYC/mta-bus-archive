@@ -29,7 +29,7 @@ STRPTIME = "%Y-%m-%dT%H:%M:%S.%f%z"
 INSERT = """INSERT INTO positions
     (timestamp_utc, service_date, vehicle_id, trip_id,
         progress, bearing, longitude, latitude,
-        next_stop_id, dist_along_route, dist_from_stop)
+        stop_id, dist_along_route, dist_from_stop)
     VALUES
     (
         %(timestamp)s, %(service_date)s, %(vehicle)s, %(trip)s,
