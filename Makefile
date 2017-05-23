@@ -1,7 +1,7 @@
 shell = bash
 
 MYSQLFLAGS =
-DATABASE = nycbus
+DATABASE =
 MYSQL = mysql $(DATABASE) $(MYSQLFLAGS)
 
 PSQLFLAGS = 
@@ -11,14 +11,14 @@ ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
 DATE = 20161101
 
-.PHONY: mysql mysql-% psql psql-% psql_init mysql_init
+.PHONY: mysql-% psql psql-% psql_init mysql_init download mysql_download
 
-psql: psql-$(DATE)
+download: psql-$(DATE)
 
 psql-%: csv/bus_time_%.csv
-	$(PSQL) -c "\copy positions FROM '$<' DELIMITER ',' HEADER NULL '\N' CSV"
+	$(PSQL) -c "COPY positions FROM '$(abspath $<)' DELIMITER ',' HEADER NULL '\N' CSV"
 
-mysql: mysql-$(DATE)
+mysql_download: mysql-$(DATE)
 
 mysql-%: csv/bus_time_%.csv
 	$(MYSQL) --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
@@ -27,7 +27,7 @@ mysql-%: csv/bus_time_%.csv
 		LINES TERMINATED BY '\r\n' \
 		IGNORE 1 LINES"
 
-.PRECIOUS: csv/bus_time_%.csv.csv
+.PRECIOUS: csv/bus_time_%.csv.xz
 
 csv/%.csv: xz/%.csv.xz | csv
 	@rm -f $@
@@ -42,7 +42,7 @@ xz/bus_time_%.csv.xz: | xz
 mysql_init: sql/archive_schema.mysql
 	$(MYSQL) < $<
 
-psql_init: sql/archive_schema.sql
+init: sql/archive_schema.sql
 	$(PSQL) -f $<
 
 src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
