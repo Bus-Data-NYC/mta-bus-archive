@@ -45,6 +45,9 @@ mysql_init: sql/archive_schema.mysql
 psql_init: sql/archive_schema.sql
 	$(PSQL) -f $<
 
+src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
+	protoc $< --python_out=.
+
 clean:
 	rm -rf xz csv
 	$(MYSQL) -e "DROP TABLE IF EXISTS positions"
