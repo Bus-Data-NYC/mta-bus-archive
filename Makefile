@@ -13,12 +13,14 @@ DATE = 20161101
 
 .PHONY: mysql-% psql psql-% psql_init mysql_init download mysql_download
 
+.PRECIOUS: csv/bus_time_%.csv.xz
+
 download: psql-$(DATE)
+
+mysql_download: mysql-$(DATE)
 
 psql-%: csv/bus_time_%.csv
 	$(PSQL) -c "COPY positions FROM '$(abspath $<)' DELIMITER ',' HEADER NULL '\N' CSV"
-
-mysql_download: mysql-$(DATE)
 
 mysql-%: csv/bus_time_%.csv
 	$(MYSQL) --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
@@ -26,8 +28,6 @@ mysql-%: csv/bus_time_%.csv
 		FIELDS TERMINATED BY ',' \
 		LINES TERMINATED BY '\r\n' \
 		IGNORE 1 LINES"
-
-.PRECIOUS: csv/bus_time_%.csv.xz
 
 csv/%.csv: xz/%.csv.xz | csv
 	@rm -f $@
@@ -47,9 +47,5 @@ init: sql/archive_schema.sql
 
 src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
 	protoc $< --python_out=.
-
-clean:
-	rm -rf xz csv
-	$(MYSQL) -e "DROP TABLE IF EXISTS positions"
 
 csv xz: ; mkdir -p $@
