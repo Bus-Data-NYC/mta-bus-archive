@@ -1,6 +1,6 @@
 DROP TABLE IF EXISTS positions;
 CREATE TABLE positions (
-    timestamp_utc TIMESTAMP NOT NULL,
+    timestamp_utc TIMESTAMP WITH TIME ZONE NOT NULL,
     vehicle_id TEXT NOT NULL,
     latitude NUMERIC(8, 6) NOT NULL,
     longitude NUMERIC(9, 6) NOT NULL,
