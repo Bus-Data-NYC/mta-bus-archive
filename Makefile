@@ -26,7 +26,7 @@ download: psql-$(DATE)
 mysql_download: mysql-$(DATE)
 
 psql-%: csv/bus_time_%.csv
-	$(PSQL) -c "COPY positions FROM '$(abspath $<)' DELIMITER ',' HEADER NULL '\N' CSV"
+	$(PSQL) -c "COPY positions FROM '$(abspath $<)' CSV HEADER DELIMITER AS ',' NULL AS '\N'"
 
 mysql-%: csv/bus_time_%.csv
 	$(MYSQL) --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
