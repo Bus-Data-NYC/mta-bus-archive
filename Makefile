@@ -51,6 +51,9 @@ mysql_init: sql/schema.mysql
 init: sql/schema.sql
 	$(PSQL) -f $<
 
+install:
+	$(PYTHON) -m pip install -r requirements.txt
+
 src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
 	protoc $< --python_out=.
 
