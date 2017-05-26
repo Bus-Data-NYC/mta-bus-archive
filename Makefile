@@ -45,10 +45,10 @@ xz/bus_time_%.csv.xz: | xz
 	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
 
-mysql_init: sql/archive_schema.mysql
+mysql_init: sql/schema.mysql
 	$(MYSQL) < $<
 
-init: sql/archive_schema.sql
+init: sql/schema.sql
 	$(PSQL) -f $<
 
 src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
