@@ -13,10 +13,12 @@ ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
 DATE = 20161101
 
+PB2 = src/nyct_realtime_pb2.py src/gtfs_realtime_pb2.py
+
 .PHONY: all mysql-% psql psql-% psql_init mysql_init download mysql_download \
 	scrape_mbta scrape_mta
 
-.PRECIOUS: csv/bus_time_%.csv.xz
+.PRECIOUS: xz/bus_time_%.csv.xz
 
 all:
 
@@ -56,7 +58,7 @@ init: sql/schema.sql
 install:
 	$(PYTHON) -m pip install -r requirements.txt
 
-src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
-	protoc $< --python_out=.
+$(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
+	protoc $< -I$(<D) --python_out=$(@D)
 
 csv xz: ; mkdir -p $@
