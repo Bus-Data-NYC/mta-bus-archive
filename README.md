@@ -1,30 +1,28 @@
-# bus-archive
+# mta bus archive
 
-Download archived NYC MTA bus position data, and scrape data from the MTA or MBTA.
+Download archived NYC MTA bus position data, and scrape gtfs-realtime data from the MTA.
 
 Bus position data is archived at [data.mytransit.nyc](http://data.mytransit.nyc).
 
+Requirements:
+* Python 3.x
+* PostgreSQL
+
 ## Set up
 
-This set up assumes that you have a Postgres or MySQL database running.
-
-Create a `positions` table in the Postgres database `dbname`:
+Create a set of tables in the Postgres database `dbname`:
 ```
-make init DATABASE=dbname
+make install DATABASE=dbname
 ```
 
-A MySQL version is also included:
-```
-make mysql_init DATABASE=dbname
-```
+This command will create a number of whose tables that begin with `rt_`, notable `rt_vehicle_positions`, `rt_alerts` and `rt_trip_updates`. It will also install the Python requirements, including the [Google Protobuf](https://pypi.python.org/pypi/protobuf/3.3.0) library.
 
 You can specify a remote table using the `PSQLFLAGS` or `MYQSLFLAGS` variables:
 ```
-make init DATABASE=dbname PSQLFLAGS="-U psql_user"
-make mysql_init DATABASE=dbname MYSQLFLAGS="-u mysql_user"
+make install DATABASE=dbname PSQLFLAGS="-U psql_user"
 ```
 
-## Download an MTA Bus Time archive
+## Download an MTA Bus Time archive file
 
 Download a (UTC) day from [data.mytransit.nyc](http://data.mytransit.nyc), and import into the Postgres database `dbname`:
 ```
@@ -38,32 +36,35 @@ make mysql_download DATE=20161231 DATABASE=dbname
 
 ## Scraping
 
-Scrapers have been tested with Python 3.4 and above. Earlier versions of Python (e.g. 2.7) will likely work, but no guarantees.
-
-### Install
-
-```
-make install 
-make init DATABASE=dbname
-```
-The first line install the Python requirements. This includes the [Google Protobuf](https://pypi.python.org/pypi/protobuf/3.3.0) library, which is useful for GTFS-Realtime APIs (e.g. MBTA). You may omit it this library if not using a GTFS-Realtime API.
-
-The second line creates a `positions` table in the database `dbname`.
+Scrapers have been tested with Python 3.4 and above. Earlier versions of Python (e.g. 2.7) won't work.
 
 ### Scrape
 
-Both scrapers load results into a table named `positions`. The assumption is that you're not using them in the same database.
+The scraper depends assumes an environment variable, `BUSTIME_API_KEY`, contains an MTA BusTime API key. [Get a key from the MTA](http://bustime.mta.info/wiki/Developers/Index).
 
-The scrapers depend on the environment variables `MTA_KEY` and `MBTA_KEY` to contain the API keys, which are available after signing up at each agency.
-
-Download the current positions from the MTA API and save in `mtadb.positions`:
 ```
-export MTA_KEY=xyz123
-python3 src/scrape_mta.py mtadb
+export BUSTIME_API_KEY=xyz123
 ```
 
-Download the current positions from the MBTA API and save in `mbtadb.positions`:
+Download the current positions from the MTA API and save a local PostgreSQL database named `mtadb`:
 ```
-export MBTA_KEY=xyz123
-python3 src/scrape_mbta.py mbtadb
+make positions DATABASE=mtadb
 ```
+
+Download current trip updates:
+```
+make tripupdates DATABASE=mbtadb
+```
+
+Download current alerts:
+```
+make alerts DATABASE=mbtadb
+```
+
+## Scheduling
+
+The included `crontab` shows an example setup for downloading data from the MTA API. It assumes that this repository is saved in `~/mta-bus-archive`. Fill-in the `DATABASE` and `BUSTIME_API_KEY` variables before using.
+
+# License
+
+Available under the Apache License.
