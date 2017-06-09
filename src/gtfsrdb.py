@@ -47,6 +47,7 @@ def fromtimestamp(timestamp):
     except TypeError:
         return None
 
+
 def get_translated(translation, lang=None):
     '''Get a specific translation from a TranslatedString.'''
     # If we don't find the requested language, return this
@@ -63,6 +64,7 @@ def get_translated(translation, lang=None):
     # If lang not found, return arbitrary text.
     return translation[0].text
 
+
 def start_logger(level):
     logger = logging.getLogger()
     logger.setLevel(level)
@@ -72,12 +74,14 @@ def start_logger(level):
     logger.addHandler(loghandler)
 
 
-def load_lut(conn):
-    for name, values in model.LUT_DATA.items():
-        table = model.Base.metadata.tables[name]
-        for i, desc in values:
-            insert = table.insert({'id': i, 'description': desc})
-            conn.execute(insert)
+def getenum(cls, value, default=None):
+    try:
+        return cls(value)
+    except ValueError:
+        if default:
+            return cls(default)
+        else:
+            return None
 
 
 def load_entity(url):
@@ -101,7 +105,7 @@ def parse_vehicle(entity):
         trip_start_time=vp.trip.start_time or None,
         trip_start_date=vp.trip.start_date,
         stop_id=vp.stop_id,
-        stop_status=vp.current_status,
+        stop_status=getenum(model.StopStatus, vp.current_status),
         vehicle_id=vp.vehicle.id,
         vehicle_label=vp.vehicle.label or None,
         vehicle_license_plate=vp.vehicle.license_plate or None,
@@ -109,8 +113,8 @@ def parse_vehicle(entity):
         longitude=vp.position.longitude,
         bearing=vp.position.bearing,
         speed=vp.position.speed,
-        occupancy_status=vp.occupancy_status,
-        congestion_level=vp.congestion_level or None,
+        occupancy_status=getenum(model.OccupancyStatus, vp.occupancy_status),
+        congestion_level=getenum(model.CongestionLevel, vp.congestion_level, 0),
         timestamp=fromtimestamp(vp.timestamp),
     ),)
 
@@ -119,8 +123,8 @@ def parse_alert(entity):
     alert = model.Alert(
         start=fromtimestamp(entity.alert.active_period[0].start),
         end=fromtimestamp(entity.alert.active_period[0].end),
-        cause=entity.alert.cause,
-        effect=entity.alert.effect,
+        cause=getenum(model.AlertCause, entity.alert.cause),
+        effect=getenum(model.AlertEffect, entity.alert.effect),
         url=get_translated(entity.alert.url.translation),
         header_text=get_translated(entity.alert.header_text.translation),
         description_text=get_translated(entity.alert.description_text.translation),
@@ -150,7 +154,7 @@ def parse_trip(entity):
         route_id=entity.trip_update.trip.route_id,
         trip_start_time=entity.trip_update.trip.start_time or None,
         trip_start_date=entity.trip_update.trip.start_date or None,
-        schedule_relationship=entity.trip_update.trip.schedule_relationship,
+        schedule_relationship=getenum(model.TripSchedule, entity.trip_update.trip.schedule_relationship),
         vehicle_id=entity.trip_update.vehicle.id,
         vehicle_label=entity.trip_update.vehicle.label,
         vehicle_license_plate=entity.trip_update.vehicle.license_plate,
@@ -168,7 +172,7 @@ def parse_trip(entity):
             departure_delay=stu.departure.delay or None,
             departure_time=fromtimestamp(stu.departure.time),
             departure_uncertainty=stu.departure.uncertainty or None,
-            schedule_relationship=stu.schedule_relationship,
+            schedule_relationship=getenum(model.StopTimeSchedule, stu.schedule_relationship, 2),
         )
         trip.StopTimeUpdates.append(dbstu)
         rows.append(dbstu)
@@ -212,12 +216,6 @@ def main():
         # Create database tables and exit.
         model.Base.metadata.bind = engine
         model.Base.metadata.create_all()
-
-        try:
-            engine.transaction(load_lut)
-        except IntegrityError:
-            pass
-
         return
 
     urls = (args.alerts, args.trips, args.vehicles)
