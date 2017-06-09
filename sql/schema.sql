@@ -1,37 +1,62 @@
-CREATE TABLE rt_stoptime_schedule_rel (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE alertcause AS ENUM (
+    'UNKNOWN_CAUSE',
+    'TECHNICAL_PROBLEM',
+    'ACCIDENT',
+    'HOLIDAY',
+    'WEATHER',
+    'MAINTENANCE',
+    'CONSTRUCTION',
+    'POLICE_ACTIVITY',
+    'MEDICAL_EMERGENCY'
 );
-CREATE TABLE rt_trip_schedule_rel (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE alerteffect AS ENUM (
+    'NO_SERVICE',
+    'REDUCED_SERVICE',
+    'SIGNIFICANT_DELAYS',
+    'DETOUR',
+    'ADDITIONAL_SERVICE',
+    'MODIFIED_SERVICE',
+    'OTHER_EFFECT',
+    'UNKNOWN_EFFECT',
+    'STOP_MOVED'
 );
-CREATE TABLE rt_alert_cause (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE congestionlevel AS ENUM (
+    'UNKNOWN_CONGESTION_LEVEL',
+    'RUNNING_SMOOTHLY',
+    'STOP_AND_GO',
+    'CONGESTION'
 );
-CREATE TABLE rt_alert_effect (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE occupancystatus AS ENUM (
+    'EMPTY',
+    'MANY_SEATS_AVAILABLE',
+    'FEW_SEATS_AVAILABLE',
+    'STANDING_ROOM_ONLY',
+    'CRUSHED_STANDING_ROOM_ONLY',
+    'FULL',
+    'NOT_ACCEPTING_PASSENGERS'
 );
-CREATE TABLE rt_congestion_level (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE stopstatus AS ENUM (
+    'INCOMING_AT',
+    'STOPPED_AT',
+    'IN_TRANSIT_TO'
 );
-CREATE TABLE rt_occupancy_status (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE stoptimeschedule AS ENUM (
+    'SCHEDULED',
+    'SKIPPED',
+    'NO_DATA'
 );
-CREATE TABLE rt_stop_status (
-    id integer PRIMARY KEY,
-    description text
+CREATE TYPE tripschedule AS ENUM (
+    'SCHEDULED',
+    'ADDED',
+    'UNSCHEDULED',
+    'CANCELED'
 );
 CREATE TABLE rt_alerts (
     oid serial PRIMARY KEY,
     start timestamp with time zone,
     "end" timestamp with time zone,
-    cause integer REFERENCES rt_alert_cause(id),
-    effect integer REFERENCES rt_alert_effect(id),
+    cause alertcause,
+    effect alerteffect,
     url text,
     header_text text,
     description_text text
@@ -58,7 +83,7 @@ CREATE TABLE rt_stop_time_updates (
     departure_delay integer,
     departure_time timestamp with time zone,
     departure_uncertainty integer,
-    schedule_relationship integer REFERENCES rt_stoptime_schedule_rel(id),
+    schedule_relationship stoptimeschedule,
     trip_update_id integer REFERENCES rt_trip_updates(oid)
 );
 
@@ -68,7 +93,7 @@ CREATE TABLE rt_trip_updates (
     route_id text,
     trip_start_time interval,
     trip_start_date date,
-    schedule_relationship integer,
+    schedule_relationship tripschedule,
     vehicle_id text,
     vehicle_label text,
     vehicle_license_plate text,
@@ -88,9 +113,9 @@ CREATE TABLE rt_vehicle_positions (
     bearing numeric(5,2),
     speed numeric(4,2),
     stop_id text,
-    stop_status integer,
-    occupancy_status integer,
-    congestion_level integer,
+    stop_status stopstatus,
+    occupancy_status occupancystatus,
+    congestion_level congestionlevel,
     progress int,
     block_assigned text,
     dist_along_route numeric,

@@ -4,11 +4,10 @@
 
 # Copyright 2011 Matt Conway
 
-# Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "License")
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 
-#   http://www.apache.org/licenses/LICENSE-2.0
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,124 +18,72 @@
 # Authors:
 # Matt Conway: main code
 
+import enum
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, ForeignKey, Integer, TEXT, Date, TIMESTAMP, NUMERIC, Interval
+from sqlalchemy import Column, ForeignKey, Enum, Integer, TEXT, Date, TIMESTAMP, NUMERIC, Interval
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-LUT_DATA = {
-    'rt_occupancy_status': (
-        (0, 'empty'),
-        (1, 'many seats available'),
-        (2, 'few seats available'),
-        (3, 'standing room only'),
-        (4, 'crushed standing room only'),
-        (5, 'full'),
-        (6, 'not accepting passengers')
-    ),
-    'rt_congestion_level': (
-        (0, 'unknown congestion level'),
-        (1, 'running smoothly'),
-        (2, 'stop and go'),
-        (3, 'congestion'),
-        (4, 'severe congestion')
-    ),
-    'rt_stoptime_schedule_rel': (
-        (0, 'scheduled'),
-        (1, 'skipped'),
-        (2, 'no data'),
-    ),
-    'rt_trip_schedule_rel': (
-        (0, 'scheduled'),
-        (1, 'added'),
-        (2, 'unscheduled'),
-        (3, 'canceled'),
-    ),
-    'rt_alert_cause': (
-        (1, 'unknown cause'),
-        (2, 'other cause'),  # Not machine-representable.
-        (3, 'technical problem'),
-        (4, 'strike'),  # Public transit agency employees stopped working.
-        (5, 'demonstration'),  # People are blocking the streets.
-        (6, 'accident'),
-        (7, 'holiday'),
-        (8, 'weather'),
-        (9, 'maintenance'),
-        (10, 'construction'),
-        (11, 'police activity'),
-        (12, 'medical emergency'),
-    ),
-    'rt_alert_effect': (
-        (1, 'no service'),
-        (2, 'reduced service'),
-        (3, 'significant delays'),
-        (4, 'detour'),
-        (5, 'additional service'),
-        (6, 'modified service'),
-        (7, 'other effect'),
-        (8, 'unknown effect'),
-        (9, 'stop moved'),
-    ),
-    'rt_stop_status': (
-        (0, 'incoming at'),
-        (1, 'stopped at'),
-        (2, 'in transit to'),
-    ),
-}
+
+class OccupancyStatus(enum.Enum):
+    EMPTY = 0
+    MANY_SEATS_AVAILABLE = 1
+    FEW_SEATS_AVAILABLE = 2
+    STANDING_ROOM_ONLY = 3
+    CRUSHED_STANDING_ROOM_ONLY = 4
+    FULL = 5
+    NOT_ACCEPTING_PASSENGERS = 6
 
 
-class AlertCause(Base):
-    __tablename__ = 'rt_alert_cause'
-
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
-
-
-class AlertEffect(Base):
-    __tablename__ = 'rt_alert_effect'
-
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
+class CongestionLevel(enum.Enum):
+    UNKNOWN_CONGESTION_LEVEL = 0
+    RUNNING_SMOOTHLY = 1
+    STOP_AND_GO = 2
+    CONGESTION = 3
 
 
-class CongestionLevel(Base):
-    __tablename__ = 'rt_congestion_level'
-
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
-
-
-class OccupancyStatus(Base):
-    __tablename__ = 'rt_occupancy_status'
-
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
+class StopTimeSchedule(enum.Enum):
+    SCHEDULED = 0
+    SKIPPED = 1
+    NO_DATA = 2
 
 
-class StopTimeScheduleRelationship(Base):
-    __tablename__ = 'rt_stoptime_schedule_rel'
-
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
-
-    reference = relationship('StopTimeUpdate', backref='StopTimeScheduleRelationship')
+class TripSchedule(enum.Enum):
+    SCHEDULED = 0
+    ADDED = 1
+    UNSCHEDULED = 2
+    CANCELED = 3
 
 
-class TripScheduleRelationship(Base):
-    __tablename__ = 'rt_trip_schedule_rel'
+class AlertCause(enum.Enum):
+    UNKNOWN_CAUSE = 1
+    TECHNICAL_PROBLEM = 3
+    ACCIDENT = 6
+    HOLIDAY = 7
+    WEATHER = 8
+    MAINTENANCE = 9
+    CONSTRUCTION = 10
+    POLICE_ACTIVITY = 11
+    MEDICAL_EMERGENCY = 12
 
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
 
-    reference = relationship('TripUpdate', backref='TripScheduleRelationship')
+class AlertEffect(enum.Enum):
+    NO_SERVICE = 1
+    REDUCED_SERVICE = 2
+    SIGNIFICANT_DELAYS = 3
+    DETOUR = 4
+    ADDITIONAL_SERVICE = 5
+    MODIFIED_SERVICE = 6
+    OTHER_EFFECT = 7
+    UNKNOWN_EFFECT = 8
+    STOP_MOVED = 9
 
 
-class StopStatus(Base):
-    __tablename__ = 'rt_stop_status'
-
-    id = Column(Integer, primary_key=True)
-    description = Column(TEXT)
+class StopStatus(enum.Enum):
+    INCOMING_AT = 0
+    STOPPED_AT = 1
+    IN_TRANSIT_TO = 2
 
 
 class TripUpdate(Base):
@@ -151,7 +98,7 @@ class TripUpdate(Base):
     trip_start_date = Column(Date)
 
     # Put in the string value not the enum
-    schedule_relationship = Column(Integer, ForeignKey('rt_trip_schedule_rel.id'))
+    schedule_relationship = Column(Enum(TripSchedule))
 
     # Collapsed VehicleDescriptor
     vehicle_id = Column(TEXT)
@@ -182,7 +129,7 @@ class StopTimeUpdate(Base):
     departure_time = Column(TIMESTAMP(True))
     departure_uncertainty = Column(Integer)
 
-    schedule_relationship = Column(Integer, ForeignKey('rt_stoptime_schedule_rel.id'))
+    schedule_relationship = Column(Enum(StopTimeSchedule), default='NO_DATA')
 
     # Link it to the TripUpdate
     # The .TripUpdate is done by the backref in TripUpdate
@@ -197,8 +144,8 @@ class Alert(Base):
     start = Column(TIMESTAMP(True))
     end = Column(TIMESTAMP(True))
 
-    cause = Column(Integer, ForeignKey('rt_alert_cause.id'), default=1)
-    effect = Column(Integer, ForeignKey('rt_alert_effect.id'))
+    cause = Column(Enum(AlertCause), default='UNKNOWN_CAUSE')
+    effect = Column(Enum(AlertEffect), default='UNKNOWN_EFFECT')
 
     url = Column(TEXT)
     header_text = Column(TEXT)
@@ -249,10 +196,10 @@ class VehiclePosition(Base):
     speed = Column(NUMERIC(4, 2))
 
     stop_id = Column(TEXT)
-    stop_status = Column(Integer, ForeignKey('rt_stop_status.id'))
+    stop_status = Column(Enum(StopStatus))
 
-    occupancy_status = Column(Integer, ForeignKey('rt_occupancy_status.id'))
-    congestion_level = Column(Integer, ForeignKey('rt_congestion_level.id'), default=0)
+    occupancy_status = Column(Enum(OccupancyStatus))
+    congestion_level = Column(Enum(CongestionLevel), default='UNKNOWN_CONGESTION_LEVEL')
 
     # Non-standard columns, included for SIRI data
     progress = Column(Integer)
