@@ -1,43 +1,46 @@
 shell = bash
 
-PYTHON=python
+PYTHON = python
 
-MYSQLFLAGS =
 DATABASE =
-MYSQL = mysql $(DATABASE) $(MYSQLFLAGS)
-
 PSQLFLAGS = 
 PSQL = psql $(DATABASE) $(PSQLFLAGS)
+
+SQLALCHEMY_URL = postgresql://localhost/$(DATABASE)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
 DATE = 20161101
 
-PB2 = src/nyct_realtime_pb2.py src/gtfs_realtime_pb2.py
+PB2 = src/gtfs_realtime_pb2.py
+
+alerts 		= http://gtfsrt.prod.obanyc.com/alerts
+positions 	= http://gtfsrt.prod.obanyc.com/vehiclePositions
+tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
+
+GTFSRDB = $(PYTHON) src/gtfsrdb.py -d $(SQLALCHEMY_URL)
 
 .PHONY: all mysql-% psql psql-% psql_init mysql_init download mysql_download \
-	scrape_mbta scrape_mta
+	positions alerts tripupdates
 
 .PRECIOUS: xz/bus_time_%.csv.xz
 
 all:
 
-scrape_mbta scrape_mta: %: 
-	$(PYTHON) src/$*.py $(DATABASE)
+# Scrape GTFS-rt data.
+
+alerts:; $(GTFSRDB) -a $(alerts)?key=$(BUSTIME_API_KEY)
+
+positions:; $(GTFSRDB) -p $(positions)?key=$(BUSTIME_API_KEY)
+
+tripupdates:; $(GTFSRDB) -t $(tripupdates)?key=$(BUSTIME_API_KEY)
+
+# Download past data
 
 download: psql-$(DATE)
 
-mysql_download: mysql-$(DATE)
-
 psql-%: csv/bus_time_%.csv
-	$(PSQL) -c "COPY positions FROM '$(abspath $<)' CSV HEADER DELIMITER AS ',' NULL AS '\N'"
-
-mysql-%: csv/bus_time_%.csv
-	$(MYSQL) --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
-		IGNORE INTO TABLE positions \
-		FIELDS TERMINATED BY ',' \
-		LINES TERMINATED BY '\r\n' \
-		IGNORE 1 LINES"
+	$(PSQL) -c "COPY rt_vehicle_positions FROM '$(abspath $<)' CSV HEADER DELIMITER AS ',' NULL AS '\N'"
 
 csv/%.csv: xz/%.csv.xz | csv
 	@rm -f $@
@@ -49,14 +52,10 @@ xz/bus_time_%.csv.xz: | xz
 	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
 
-mysql_init: sql/schema.mysql
-	$(MYSQL) < $<
-
-init: sql/schema.sql
-	$(PSQL) -f $<
-
 install:
 	$(PYTHON) -m pip install -r requirements.txt
+	-createdb $(DATABASE)
+	$(GTFSRDB) -c
 
 $(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
