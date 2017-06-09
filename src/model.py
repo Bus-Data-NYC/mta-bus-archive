@@ -20,7 +20,7 @@
 # Matt Conway: main code
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, ForeignKey, Integer, TEXT, DATE, TIMESTAMP, Float, Interval
+from sqlalchemy import Column, ForeignKey, Integer, TEXT, Date, TIMESTAMP, NUMERIC, Interval
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
@@ -90,35 +90,35 @@ class AlertCause(Base):
     __tablename__ = 'rt_alert_cause'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
 
 class AlertEffect(Base):
     __tablename__ = 'rt_alert_effect'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
 
 class CongestionLevel(Base):
     __tablename__ = 'rt_congestion_level'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
 
 class OccupancyStatus(Base):
     __tablename__ = 'rt_occupancy_status'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
 
 class StopTimeScheduleRelationship(Base):
     __tablename__ = 'rt_stoptime_schedule_rel'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
     reference = relationship('StopTimeUpdate', backref='StopTimeScheduleRelationship')
 
@@ -127,7 +127,7 @@ class TripScheduleRelationship(Base):
     __tablename__ = 'rt_trip_schedule_rel'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
     reference = relationship('TripUpdate', backref='TripScheduleRelationship')
 
@@ -136,7 +136,7 @@ class StopStatus(Base):
     __tablename__ = 'rt_stop_status'
 
     id = Column(Integer, primary_key=True)
-    description = Column(TEXT())
+    description = Column(TEXT)
 
 
 class TripUpdate(Base):
@@ -145,18 +145,18 @@ class TripUpdate(Base):
     oid = Column(Integer, primary_key=True)
 
     # This replaces the TripDescriptor message
-    trip_id = Column(TEXT())
-    route_id = Column(TEXT())
-    trip_start_time = Column(Interval, default=None)
-    trip_start_date = Column(DATE())
+    trip_id = Column(TEXT)
+    route_id = Column(TEXT)
+    trip_start_time = Column(Interval(native=True), default=None)
+    trip_start_date = Column(Date)
 
     # Put in the string value not the enum
     schedule_relationship = Column(Integer, ForeignKey('rt_trip_schedule_rel.id'))
 
     # Collapsed VehicleDescriptor
-    vehicle_id = Column(TEXT())
-    vehicle_label = Column(TEXT())
-    vehicle_license_plate = Column(TEXT())
+    vehicle_id = Column(TEXT)
+    vehicle_label = Column(TEXT)
+    vehicle_license_plate = Column(TEXT)
 
     # moved from the header, and reformatted as datetime
     timestamp = Column(TIMESTAMP(True))
@@ -170,7 +170,7 @@ class StopTimeUpdate(Base):
     oid = Column(Integer, primary_key=True)
 
     stop_sequence = Column(Integer)
-    stop_id = Column(TEXT())
+    stop_id = Column(TEXT)
 
     # Collapsed StopTimeEvent
     arrival_delay = Column(Integer)
@@ -194,17 +194,15 @@ class Alert(Base):
 
     oid = Column(Integer, primary_key=True)
 
-    # Collapsed TimeRange
-    start = Column(Integer)
-    end = Column(Integer)
+    start = Column(TIMESTAMP(True))
+    end = Column(TIMESTAMP(True))
 
-    # Add domain
-    cause = Column(Integer, ForeignKey('rt_alert_cause.id'))
+    cause = Column(Integer, ForeignKey('rt_alert_cause.id'), default=1)
     effect = Column(Integer, ForeignKey('rt_alert_effect.id'))
 
-    url = Column(TEXT())
-    header_text = Column(TEXT())
-    description_text = Column(TEXT())
+    url = Column(TEXT)
+    header_text = Column(TEXT)
+    description_text = Column(TEXT)
 
     InformedEntities = relationship('EntitySelector', backref='Alert')
 
@@ -214,16 +212,16 @@ class EntitySelector(Base):
 
     oid = Column(Integer, primary_key=True)
 
-    agency_id = Column(TEXT())
-    route_id = Column(TEXT())
+    agency_id = Column(TEXT)
+    route_id = Column(TEXT)
     route_type = Column(Integer)
-    stop_id = Column(TEXT())
+    stop_id = Column(TEXT)
 
     # Collapsed TripDescriptor
-    trip_id = Column(TEXT())
-    trip_route_id = Column(TEXT())
-    trip_start_time = Column(Interval)
-    trip_start_date = Column(DATE())
+    trip_id = Column(TEXT)
+    trip_route_id = Column(TEXT)
+    trip_start_time = Column(Interval(native=True))
+    trip_start_date = Column(Date)
 
     alert_id = Column(Integer, ForeignKey('rt_alerts.oid'))
 
@@ -234,24 +232,30 @@ class VehiclePosition(Base):
     timestamp = Column(TIMESTAMP(True), primary_key=True)
 
     # This replaces the TripDescriptor message
-    trip_id = Column(TEXT())
-    route_id = Column(TEXT())
-    trip_start_time = Column(Integer)
-    trip_start_date = Column(TEXT())
+    trip_id = Column(TEXT)
+    route_id = Column(TEXT)
+    trip_start_time = Column(Interval(native=True))
+    trip_start_date = Column(Date)
 
     # Collapsed VehicleDescriptor
-    vehicle_id = Column(TEXT(), primary_key=True)
-    vehicle_label = Column(TEXT())
-    vehicle_license_plate = Column(TEXT())
+    vehicle_id = Column(TEXT, primary_key=True)
+    vehicle_label = Column(TEXT)
+    vehicle_license_plate = Column(TEXT)
 
     # Collapsed Position
-    latitude = Column(Float)
-    longitude = Column(Float)
-    bearing = Column(Float)
-    speed = Column(Float)
+    latitude = Column(NUMERIC(9, 6))
+    longitude = Column(NUMERIC(9, 6))
+    bearing = Column(NUMERIC(5, 2))
+    speed = Column(NUMERIC(4, 2))
 
     stop_id = Column(TEXT)
     stop_status = Column(Integer, ForeignKey('rt_stop_status.id'))
 
     occupancy_status = Column(Integer, ForeignKey('rt_occupancy_status.id'))
-    congestion_level = Column(Integer, ForeignKey('rt_congestion_level.id'))
+    congestion_level = Column(Integer, ForeignKey('rt_congestion_level.id'), default=0)
+
+    # Non-standard columns, included for SIRI data
+    progress = Column(Integer)
+    block_assigned = Column(TEXT)
+    dist_along_route = Column(NUMERIC)
+    dist_from_stop = Column(NUMERIC)
