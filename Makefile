@@ -29,11 +29,11 @@ all:
 
 # Scrape GTFS-rt data.
 
-alerts:; $(GTFSRDB) -a $(alerts)?key=$(BUSTIME_API_KEY)
+alerts:; $(GTFSRDB) --alerts $(alerts)?key=$(BUSTIME_API_KEY)
 
-positions:; $(GTFSRDB) -p $(positions)?key=$(BUSTIME_API_KEY)
+positions:; $(GTFSRDB) --vehicle-positions $(positions)?key=$(BUSTIME_API_KEY)
 
-tripupdates:; $(GTFSRDB) -t $(tripupdates)?key=$(BUSTIME_API_KEY)
+tripupdates:; $(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
 
 # Download past data
 
@@ -69,7 +69,7 @@ xz/bus_time_%.csv.xz: | xz
 install: sql/schema.sql
 	$(PYTHON) -m pip install -r requirements.txt
 	-createdb $(DATABASE)
-	psql $(DATABASE) $(PSQLFLAGS) -f $<
+	$(GTFSRDB) --create-tables
 
 $(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
