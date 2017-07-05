@@ -12,26 +12,26 @@ Requirements:
 
 Create a set of tables in the Postgres database `dbname`:
 ```
-make install DATABASE=dbname
+make install PG_DATABASE=dbname
 ```
 
 This command will create a number of whose tables that begin with `rt_`, notable `rt_vehicle_positions`, `rt_alerts` and `rt_trip_updates`. It will also install the Python requirements, including the [Google Protobuf](https://pypi.python.org/pypi/protobuf/3.3.0) library.
 
 You can specify a remote table using the `PSQLFLAGS` or `MYQSLFLAGS` variables:
 ```
-make install DATABASE=dbname PSQLFLAGS="-U psql_user"
+make install PG_DATABASE=dbname PSQLFLAGS="-U psql_user"
 ```
 
 ## Download an MTA Bus Time archive file
 
 Download a (UTC) day from [data.mytransit.nyc](http://data.mytransit.nyc), and import into the Postgres database `dbname`:
 ```
-make download DATE=20161231 DATABASE=dbname
+make download DATE=20161231 PG_DATABASE=dbname
 ```
 
 The same, for MySQL:
 ```
-make mysql_download DATE=20161231 DATABASE=dbname
+make mysql_download DATE=20161231 PG_DATABASE=dbname
 ```
 
 ## Scraping
@@ -48,17 +48,17 @@ export BUSTIME_API_KEY=xyz123
 
 Download the current positions from the MTA API and save a local PostgreSQL database named `mtadb`:
 ```
-make positions DATABASE=mtadb
+make positions PG_DATABASE=dbname
 ```
 
 Download current trip updates:
 ```
-make tripupdates DATABASE=mbtadb
+make tripupdates PG_DATABASE=dbname
 ```
 
 Download current alerts:
 ```
-make alerts DATABASE=mbtadb
+make alerts PG_DATABASE=dbname
 ```
 
 ## Scheduling

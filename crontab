@@ -1,6 +1,6 @@
 PATH=/usr/bin
-DATABASE=
 BUSTIME_API_KEY=
+PG_DATABASE=
 SCRAPER_PATH=$HOME/mta-bus-archive
 
 */2 * * * * make -e -C $SCRAPER_PATH positions

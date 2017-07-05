@@ -2,11 +2,14 @@ shell = bash
 
 PYTHON = python
 
-DATABASE =
-PSQLFLAGS = 
-PSQL = psql $(DATABASE) $(PSQLFLAGS)
+PG_HOST = localhost
+PG_PORT = 5432
+PG_USER ?= $(USER)
+PG_DATABASE =
+PSQLFLAGS = -U $(PG_USER)
+PSQL = psql $(PG_DATABASE) $(PSQLFLAGS)
 
-SQLALCHEMY_URL = postgresql://localhost/$(DATABASE)
+SQLALCHEMY_URL = postgresql://$(PG_USER)@$(PG_HOST):$(PG_PORT)/$(PG_DATABASE)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
