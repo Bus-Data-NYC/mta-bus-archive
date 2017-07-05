@@ -65,6 +65,17 @@ make alerts PG_DATABASE=dbname
 
 The included `crontab` shows an example setup for downloading data from the MTA API. It assumes that this repository is saved in `~/mta-bus-archive`. Fill-in the `DATABASE` and `BUSTIME_API_KEY` variables before using.
 
+# Setting up Postgres in CentOS
+
+Pick a user name and a database name. In this example they are `myusername` and `mydbname`.
+
+```
+sudo yum install -y git gcc python35 python35-devel postgresql postgresql-libs postgresql-server postgresql92-contrib postgresql-devel
+curl https://bootstrap.pypa.io/get-pip.py | sudo python3.5
+sudo su - postgres; createuser -s myusername; exit
+sudo make install PYTHON=python35 PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
+```
+
 # License
 
 Available under the Apache License.
