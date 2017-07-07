@@ -232,9 +232,14 @@ def main():
 
             for entity in entities:
                 rows = parse(entity)
-                db_session.add_all(rows)
+                for row in rows:
+                    db_session.begin()
+                    db_session.add(row)
 
-            db_session.commit()
+                    try:
+                        db_session.commit()
+                    except sqlalchemy.exc.IntegrityError:
+                        pass
 
 
 if __name__ == '__main__':
