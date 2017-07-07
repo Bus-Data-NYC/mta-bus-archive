@@ -1,8 +1,9 @@
 PATH=/usr/bin
 BUSTIME_API_KEY=
 PG_DATABASE=
-SCRAPER_PATH=$HOME/mta-bus-archive
+# PG_HOST=""
+# PYTHON=
 
-*/2 * * * * make -e -C $SCRAPER_PATH positions
-# */3 * * * * make -e -C $SCRAPER_PATH tripupdates
-# */3 * * * * make -e -C $SCRAPER_PATH alerts
+*/2 * * * * make -e -C $HOME/mta-bus-archive positions
+# */3 * * * * make -e -C $HOME/mta-bus-archive tripupdates
+# */3 * * * * make -e -C $HOME/mta-bus-archive alerts
