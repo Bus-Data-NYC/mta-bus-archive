@@ -4,9 +4,7 @@
 # recommended to have the (static) GTFS data for the agency you are connecting
 # to already loaded.
 
-# Copyright 2011, 2013 Matt Conway
-
-# Copyright 2011, 2013 Neil Freeman
+# Copyright 2017 Transit Center
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,20 +20,25 @@
 
 # Authors:
 # Neil Freeman
-# Based on code by:
-# Matt Conway
-# Jorge Adorno
+
 
 import sys
 from datetime import datetime
 from argparse import ArgumentParser
 import logging
 from urllib.request import urlopen
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import pytz
 import gtfs_realtime_pb2
+import psycopg2
+from psycopg2.extras import execute_values
 import model
+
+
+INSERT = "INSERT INTO {table} ({columns}) VALUES %s ON CONFLICT DO NOTHING"
+
+
+def insert_stmt(table, columns):
+    return INSERT.format(table=table, columns=', '.join(columns))
 
 
 def fromtimestamp(timestamp):
@@ -76,10 +79,10 @@ def start_logger(level):
 
 def getenum(cls, value, default=None):
     try:
-        return cls(value)
+        return cls(value).name
     except ValueError:
         if default:
-            return cls(default)
+            return cls(default).name
         else:
             return None
 
@@ -99,85 +102,160 @@ def load_entity(url):
 
 def parse_vehicle(entity):
     vp = entity.vehicle
-    return (model.VehiclePosition(
-        trip_id=vp.trip.trip_id,
-        route_id=vp.trip.route_id,
-        trip_start_time=vp.trip.start_time or None,
-        trip_start_date=vp.trip.start_date,
-        stop_id=vp.stop_id,
-        stop_status=getenum(model.StopStatus, vp.current_status),
-        vehicle_id=vp.vehicle.id,
-        vehicle_label=vp.vehicle.label or None,
-        vehicle_license_plate=vp.vehicle.license_plate or None,
-        latitude=vp.position.latitude,
-        longitude=vp.position.longitude,
-        bearing=vp.position.bearing,
-        speed=vp.position.speed,
-        occupancy_status=getenum(model.OccupancyStatus, vp.occupancy_status),
-        congestion_level=getenum(model.CongestionLevel, vp.congestion_level, 0),
-        timestamp=fromtimestamp(vp.timestamp),
-    ),)
+    return (
+        vp.trip.trip_id,  # trip_id
+        vp.trip.route_id,  # route_id
+        vp.trip.start_time or None,  # trip_start_time
+        vp.trip.start_date,  # trip_start_date
+        vp.stop_id,  # stop_id
+        getenum(model.StopStatus, vp.current_status),  # stop_status
+        vp.vehicle.id,  # vehicle_id
+        vp.vehicle.label or None,  # vehicle_label
+        vp.vehicle.license_plate or None,  # vehicle_license_plate
+        vp.position.latitude,  # latitude
+        vp.position.longitude,  # longitude
+        vp.position.bearing,  # bearing
+        vp.position.speed,  # speed
+        getenum(model.OccupancyStatus, vp.occupancy_status),  # occupancy_status
+        getenum(model.CongestionLevel, vp.congestion_level, 0),  # congestion_level
+        fromtimestamp(vp.timestamp),  # timestamp
+    )
+
+
+def insert_vehicles(cursor, entities):
+    cols = (
+        'trip_id',
+        'route_id',
+        'trip_start_time',
+        'trip_start_date',
+        'stop_id',
+        'stop_status',
+        'vehicle_id',
+        'vehicle_label',
+        'vehicle_license_plate',
+        'latitude',
+        'longitude',
+        'bearing',
+        'speed',
+        'occupancy_status',
+        'congestion_level',
+        'timestamp',
+    )
+
+    sql = insert_stmt('rt_vehicle_positions', cols)
+    execute_values(cursor, sql, [parse_vehicle(e) for e in entities])
 
 
 def parse_alert(entity):
-    alert = model.Alert(
-        start=fromtimestamp(entity.alert.active_period[0].start),
-        end=fromtimestamp(entity.alert.active_period[0].end),
-        cause=getenum(model.AlertCause, entity.alert.cause),
-        effect=getenum(model.AlertEffect, entity.alert.effect),
-        url=get_translated(entity.alert.url.translation),
-        header_text=get_translated(entity.alert.header_text.translation),
-        description_text=get_translated(entity.alert.description_text.translation),
+    return (
+        fromtimestamp(entity.alert.active_period[0].start),  # start
+        fromtimestamp(entity.alert.active_period[0].end),  # end
+        getenum(model.AlertCause, entity.alert.cause),  # cause
+        getenum(model.AlertEffect, entity.alert.effect),  # effect
+        get_translated(entity.alert.url.translation),  # url
+        get_translated(entity.alert.header_text.translation),  # header_text
+        get_translated(entity.alert.description_text.translation),  # description_text
     )
-    rows = [alert]
-    for informed_entity in entity.alert.informed_entity:
-        ie = model.EntitySelector(
-            agency_id=informed_entity.agency_id,
-            route_id=informed_entity.route_id,
-            route_type=informed_entity.route_type,
-            stop_id=informed_entity.stop_id,
-            trip_id=informed_entity.trip.trip_id,
-            trip_route_id=informed_entity.trip.route_id,
-            trip_start_time=informed_entity.trip.start_time or None,
-            trip_start_date=informed_entity.trip.start_date or None
-        )
 
-        rows.append(ie)
-        alert.InformedEntities.append(ie)
 
-    return rows
+def parse_informed_entity(entity):
+    return (
+        entity.agency_id,  # agency_id
+        entity.route_id,  # route_id
+        entity.route_type,  # route_type
+        entity.stop_id,  # stop_id
+        entity.trip.trip_id,  # trip_id
+        entity.trip.route_id,  # trip_route_id
+        entity.trip.start_time or None,  # trip_start_time
+        entity.trip.start_date or None  # trip_start_date
+    )
+
+
+def insert_alerts(cursor, entities):
+    alert_cols = (
+        'start',
+        'end',
+        'cause',
+        'effect',
+        'url',
+        'header_text',
+        'description_text'
+    )
+    entity_cols = (
+        'agency_id',
+        'route_id',
+        'route_type',
+        'stop_id',
+        'trip_id',
+        'trip_route_id',
+        'trip_start_time',
+        'trip_start_date',
+    )
+    sql = insert_stmt('rt_alerts', alert_cols)
+    execute_values(cursor, sql, [parse_alert(e) for e in entities])
+
+    sql = insert_stmt('rt_entity_selectors', entity_cols)
+    for entity in entities:
+        execute_values(cursor, sql, [parse_informed_entity(ie) for ie in entity.alert.informed_entity])
 
 
 def parse_trip(entity):
-    trip = model.TripUpdate(
-        trip_id=entity.trip_update.trip.trip_id,
-        route_id=entity.trip_update.trip.route_id,
-        trip_start_time=entity.trip_update.trip.start_time or None,
-        trip_start_date=entity.trip_update.trip.start_date or None,
-        schedule_relationship=getenum(model.TripSchedule, entity.trip_update.trip.schedule_relationship),
-        vehicle_id=entity.trip_update.vehicle.id,
-        vehicle_label=entity.trip_update.vehicle.label,
-        vehicle_license_plate=entity.trip_update.vehicle.license_plate,
-        timestamp=fromtimestamp(entity.trip_update.timestamp))
+    return (
+        entity.trip_update.trip.trip_id,  # trip_id
+        entity.trip_update.trip.route_id,  # route_id
+        entity.trip_update.trip.start_time or None,  # trip_start_time
+        entity.trip_update.trip.start_date or None,  # trip_start_date
+        getenum(model.TripSchedule, entity.trip_update.trip.schedule_relationship),  # schedule_relationship
+        entity.trip_update.vehicle.id,  # vehicle_id
+        entity.trip_update.vehicle.label,  # vehicle_label
+        entity.trip_update.vehicle.license_plate,  # vehicle_license_plate
+        fromtimestamp(entity.trip_update.timestamp)  # timestamp
+    )
 
-    rows = [trip]
 
-    for stu in entity.trip_update.stop_time_update:
-        dbstu = model.StopTimeUpdate(
-            stop_sequence=stu.stop_sequence,
-            stop_id=stu.stop_id,
-            arrival_delay=stu.arrival.delay or None,
-            arrival_time=fromtimestamp(stu.arrival.time),
-            arrival_uncertainty=stu.arrival.uncertainty or None,
-            departure_delay=stu.departure.delay or None,
-            departure_time=fromtimestamp(stu.departure.time),
-            departure_uncertainty=stu.departure.uncertainty or None,
-            schedule_relationship=getenum(model.StopTimeSchedule, stu.schedule_relationship, 2),
-        )
-        trip.StopTimeUpdates.append(dbstu)
-        rows.append(dbstu)
+def parse_stoptimeupdate(entity):
+    return (
+        entity.stop_sequence,  # stop_sequence
+        entity.stop_id,  # stop_id
+        entity.arrival.delay or None,  # arrival_delay
+        fromtimestamp(entity.arrival.time),  # arrival_time
+        entity.arrival.uncertainty or None,  # arrival_uncertainty
+        entity.departure.delay or None,  # departure_delay
+        fromtimestamp(entity.departure.time),  # departure_time
+        entity.departure.uncertainty or None,  # departure_uncertainty
+        getenum(model.StopTimeSchedule, entity.schedule_relationship, 2),  # schedule_relationship
+    )
 
-    return rows
+
+def insert_trips(cursor, entities):
+    cols = (
+        'trip_id',
+        'route_id',
+        'trip_start_time',
+        'trip_start_date',
+        'schedule_relationship',
+        'vehicle_id',
+        'vehicle_label',
+        'vehicle_license_plate',
+        'timestamp',
+    )
+    stu_cols = (
+        'stop_sequence',
+        'stop_id',
+        'arrival_delay',
+        'arrival_time',
+        'arrival_uncertainty',
+        'departure_delay',
+        'departure_time',
+        'departure_uncertainty',
+        'schedule_relationship',
+    )
+    sql = insert_stmt('rt_trip_updates', cols)
+    execute_values(cursor, sql, [parse_trip(e) for e in entities])
+
+    sql = insert_stmt('rt_stop_time_updates', stu_cols)
+    for entity in entities:
+        execute_values(cursor, sql, [parse_stoptimeupdate(e) for e in entity.trip_update.stop_time_update])
 
 
 def main():
@@ -190,8 +268,6 @@ def main():
                         help='The vehicle positions URL', metavar='URL')
     parser.add_argument('-d', '--database', default=None,
                         help='Database connection string')
-    parser.add_argument('-c', '--create-tables', default=False, dest='create',
-                        action='store_true', help="Create tables if they aren't found")
 
     args = parser.parse_args()
 
@@ -204,42 +280,26 @@ def main():
         return
 
     try:
-        engine = create_engine(args.database)
-        db_session = sessionmaker(bind=engine)()
+        with psycopg2.connect(args.database) as conn:
+            urls = (args.alerts, args.trips, args.vehicles)
+            inserters = (insert_alerts, insert_trips, insert_vehicles)
 
-    except Exception as e:
-        logging.error('Unable to connect to database (%s)', args.database)
-        logging.debug(e)
+            if urls == (None, None, None):
+                logging.error('No trip updates, alerts, or vehicle positions URLs were specified')
+                return
+
+        with conn.cursor() as cursor:
+            for url, insert in zip(urls, inserters):
+                if url is not None:
+                    logging.debug('Getting %s', url)
+                    entities = load_entity(url)
+                    insert(cursor, entities)
+                    conn.commit()
+
+    except psycopg2.ProgrammingError as e:
+        logging.error(str(e).strip())
+        logging.error("Couldn't connect to database")
         return
-
-    if args.create:
-        # Create database tables and exit.
-        model.Base.metadata.bind = engine
-        model.Base.metadata.create_all()
-        return
-
-    urls = (args.alerts, args.trips, args.vehicles)
-    parsers = (parse_alert, parse_trip, parse_vehicle)
-
-    if urls == (None, None, None):
-        logging.error('No trip updates, alerts, or vehicle positions URLs were specified')
-        return
-
-    for url, parse in zip(urls, parsers):
-        if url is not None:
-            logging.debug('Getting %s', url)
-            entities = load_entity(url)
-
-            for entity in entities:
-                rows = parse(entity)
-                for row in rows:
-                    db_session.begin()
-                    db_session.add(row)
-
-                    try:
-                        db_session.commit()
-                    except sqlalchemy.exc.IntegrityError:
-                        pass
 
 
 if __name__ == '__main__':

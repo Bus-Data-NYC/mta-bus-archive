@@ -9,7 +9,10 @@ PG_DATABASE =
 PSQLFLAGS = -U $(PG_USER)
 PSQL = psql $(PG_DATABASE) $(PSQLFLAGS)
 
-SQLALCHEMY_URL = postgresql://$(PG_USER)@$(PG_HOST):$(PG_PORT)/$(PG_DATABASE)
+CONNECTION_STRING = dbname=$(PG_DATABASE) \
+	user=$(PG_USER) \
+	host=$(PG_HOST) \
+	port=$(PG_PORT)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
@@ -21,7 +24,7 @@ alerts 		= http://gtfsrt.prod.obanyc.com/alerts
 positions 	= http://gtfsrt.prod.obanyc.com/vehiclePositions
 tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
 
-GTFSRDB = $(PYTHON) src/gtfsrdb.py -d $(SQLALCHEMY_URL)
+GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
 
 .PHONY: all mysql-% psql psql-% psql_init mysql_init download mysql_download \
 	positions alerts tripupdates
