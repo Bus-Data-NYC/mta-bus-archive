@@ -6,7 +6,7 @@ Bus position data is archived at [data.mytransit.nyc](http://data.mytransit.nyc)
 
 Requirements:
 * Python 3.x
-* PostgreSQL
+* PostgreSQL 9.5+
 
 ## Set up
 
@@ -70,9 +70,10 @@ The included `crontab` shows an example setup for downloading data from the MTA 
 Pick a user name and a database name. In this example they are `myusername` and `mydbname`.
 
 ```
-sudo yum install -y git gcc python35 python35-devel postgresql postgresql-libs postgresql-server postgresql92-contrib postgresql-devel
+sudo yum install -y git gcc python35 python35-devel postgresql95.x86_64 postgresql95-libs.x86_64 postgresql95-server.x86_64 postgresql95-contrib.x86_64 postgresql95-devel.x86_64
 curl https://bootstrap.pypa.io/get-pip.py | sudo python3.5
 sudo su - postgres; createuser -s myusername; exit
+sudo service postgresql95 start
 sudo make install PYTHON=python35 PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
 ```
 

@@ -73,6 +73,18 @@ CREATE TABLE rt_entity_selectors (
     trip_start_date date,
     alert_id integer REFERENCES rt_alerts(oid)
 );
+CREATE TABLE rt_trip_updates (
+    oid serial PRIMARY KEY,
+    trip_id text,
+    route_id text,
+    trip_start_time interval,
+    trip_start_date date,
+    schedule_relationship tripschedule,
+    vehicle_id text,
+    vehicle_label text,
+    vehicle_license_plate text,
+    "timestamp" timestamp with time zone
+);
 CREATE TABLE rt_stop_time_updates (
     oid serial PRIMARY KEY,
     stop_sequence integer,
@@ -85,19 +97,6 @@ CREATE TABLE rt_stop_time_updates (
     departure_uncertainty integer,
     schedule_relationship stoptimeschedule,
     trip_update_id integer REFERENCES rt_trip_updates(oid)
-);
-
-CREATE TABLE rt_trip_updates (
-    oid serial PRIMARY KEY,
-    trip_id text,
-    route_id text,
-    trip_start_time interval,
-    trip_start_date date,
-    schedule_relationship tripschedule,
-    vehicle_id text,
-    vehicle_label text,
-    vehicle_license_plate text,
-    "timestamp" timestamp with time zone
 );
 CREATE TABLE rt_vehicle_positions (
     "timestamp" timestamp with time zone NOT NULL,

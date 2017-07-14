@@ -9,10 +9,7 @@ PG_DATABASE =
 PSQLFLAGS = -U $(PG_USER)
 PSQL = psql $(PG_DATABASE) $(PSQLFLAGS)
 
-CONNECTION_STRING = dbname=$(PG_DATABASE) \
-	user=$(PG_USER) \
-	host=$(PG_HOST) \
-	port=$(PG_PORT)
+CONNECTION_STRING = dbname=$(PG_DATABASE)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
