@@ -2,7 +2,8 @@
 from __future__ import print_function
 import sys
 from argparse import ArgumentParser
-from google.cloud import storage
+from google.cloud import exceptions, storage
+
 
 def main():
     parser = ArgumentParser()
@@ -16,12 +17,12 @@ def main():
 
     try:
         bucket = client.get_bucket(args.bucket)
-    except storage.exceptions.NotFound:
+    except exceptions.NotFound:
         bucket = client.create_bucket(args.bucket)
 
     blob = bucket.blob(args.filename, chunk_size=256)
     blob.upload_from_filename(filename=args.filename)
-    print('uploaded', filename, file=sys.stderr)
+    print('uploaded', args.filename, file=sys.stderr)
 
 if __name__ == '__main__':
     main()
