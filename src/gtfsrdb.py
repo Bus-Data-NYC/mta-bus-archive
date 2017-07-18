@@ -26,10 +26,10 @@ import sys
 from datetime import datetime
 from argparse import ArgumentParser
 import logging
-from urllib.request import urlopen
 import pytz
 import gtfs_realtime_pb2
 import psycopg2
+import requests
 from psycopg2.extras import execute_values
 import model
 
@@ -90,8 +90,8 @@ def getenum(cls, value, default=None):
 def load_entity(url):
     fm = gtfs_realtime_pb2.FeedMessage()
 
-    with urlopen(url) as r:
-        fm.ParseFromString(r.read())
+    with requests.get(url) as r:
+        fm.ParseFromString(r.content)
 
     # Check the feed version
     if fm.header.gtfs_realtime_version != '1.0':

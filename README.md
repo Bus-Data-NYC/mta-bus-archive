@@ -63,28 +63,34 @@ make alerts PG_DATABASE=dbname
 
 ## Scheduling
 
-The included `crontab` shows an example setup for downloading data from the MTA API. It assumes that this repository is saved in `~/mta-bus-archive`. Fill-in the `DATABASE` and `BUSTIME_API_KEY` variables before using.
+The included `crontab` shows an example setup for downloading data from the MTA API. It assumes that this repository is saved in `~/mta-bus-archive`. Fill-in the `PG_DATABASE` and `BUSTIME_API_KEY` variables before using.
 
 # Setting up Postgres in CentOS
 
-Pick a user name and a database name. In this example they are `myusername` and `mydbname`.
+Pick a database name.  In this example it's `mydbname`.
 
 ```
-sudo yum install -y git gcc python35 python35-devel postgresql95.x86_64 postgresql95-libs.x86_64 postgresql95-server.x86_64 postgresql95-contrib.x86_64 postgresql95-devel.x86_64
-curl https://bootstrap.pypa.io/get-pip.py | sudo python3.5
-sudo su - postgres; createuser -s myusername; exit
+sudo make install
 sudo service postgresql95 start
-sudo make install PYTHON=python35 PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
+sudo make init PG_DATABASE=mydbname PG_HOST=
 ```
 
 ## Uploading files to Google Cloud
 
 # Setup
 
-Follow the instructions in [Step 1 on this page](https://cloud.google.com/docs/authentication/getting-started) to create a Google API application and download a `client_secret.json` file (the file may have a slightly different name). Make sure to enable the "Google Cloud Storage JSON API" for your application. Then run:
+[Create a project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) in the Google API Console. Make sure to enable the "Google Cloud Storage API" for your application. Then [set up a service account](https://cloud.google.com/storage/docs/authentication#generating-a-private-key). This will download a file containing credentials named something like `myprojectname-3e1f812da9ac.json`. 
 
+Then run the following (on the machine you'll be using to scrape and upload) and follow instructions:
 ```
-make -e gcloud DATE=2017-07-14 GOOGLE_APPLICATION_CREDENTIALS=client_secret.json PG_DATABASE=mydbname
+gsutil config -e
+```
+
+Next, create a bucket for the data using the [Google Cloud Console](https://console.cloud.google.com/storage/browser).
+
+You've now authenticated yourself to the Google API. You'll now be able to run a command like:
+```
+make -e gcloud DATE=2017-07-14 PG_DATABASE=mydbname
 ```
 
 By default, the Google Cloud bucket will have the same name as the database. Use the variable `GOOGLE_BUCKET` to customize it.

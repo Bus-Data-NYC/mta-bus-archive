@@ -1,4 +1,5 @@
 psycopg2>=2.7,<3
 protobuf>=3.3.0,<4
 pytz>=2015.6
+requests>=2.11,<3
 gsutil>=4.27

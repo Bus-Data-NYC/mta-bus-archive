@@ -28,7 +28,7 @@ GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
 GOOGLE_BUCKET ?= $(PG_DATABASE)
 GOOGLE_APPLICATION_CREDENTIALS ?= client_secret.json
 
-.PHONY: all mysql-% psql psql-% psql_init mysql_init download mysql_download \
+.PHONY: all psql psql-% init install \
 	positions alerts tripupdates gcloud
 
 .PRECIOUS: xz/bus_time_%.csv.xz
@@ -88,10 +88,27 @@ xz/bus_time_%.csv.xz: | xz
 	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
 
-install: sql/schema.sql requirements.txt
-	$(PYTHON) -m pip install --upgrade --requirement requirements.txt
+YUM_REQUIRES = git \
+	gcc \
+	python \
+	python-devel \
+	postgresql95.x86_64 \
+	postgresql95-libs.x86_64 \
+	postgresql95-server.x86_64 \
+	postgresql95-contrib.x86_64 \
+	postgresql95-devel.x86_64 \
+	openssl-devel \
+	libffi-devel
+
+init: sql/schema.sql
 	-createdb $(DATABASE)
-	$(PSQL) -f $@
+	$(PSQL) -f $<
+
+install: requirements.txt
+	which yum && sudo yum install -y $(YUM_REQUIRES)
+	$(PYTHON) -m pip 2> /dev/null || curl https://bootstrap.pypa.io/get-pip.py | sudo $(PYTHON)
+	$(PYTHON) -m pip install --upgrade --requirement $<
+	sudo su - postgres; createuser -s $(PG_USER); exit
 
 $(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
