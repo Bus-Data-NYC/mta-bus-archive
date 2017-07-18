@@ -13,7 +13,9 @@ CONNECTION_STRING = dbname=$(PG_DATABASE)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
-DATE = 20161101
+DATE = 2017-07-01
+YEAR = $(shell echo $(DATE) | sed 's/\(.\{4\}\)-.*/\1/')
+MONTH =	$(shell echo $(DATE) | sed 's/.\{4\}-\(.\{2\}\)-.*/\1/')
 
 PB2 = src/gtfs_realtime_pb2.py
 
@@ -23,8 +25,11 @@ tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
 
 GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
 
+GOOGLE_BUCKET ?= $(PG_DATABASE)
+GOOGLE_APPLICATION_CREDENTIALS ?= client_secret.json
+
 .PHONY: all mysql-% psql psql-% psql_init mysql_init download mysql_download \
-	positions alerts tripupdates
+	positions alerts tripupdates gcloud
 
 .PRECIOUS: xz/bus_time_%.csv.xz
 
@@ -37,6 +42,20 @@ alerts:; $(GTFSRDB) --alerts $(alerts)?key=$(BUSTIME_API_KEY)
 positions:; $(GTFSRDB) --vehicle-positions $(positions)?key=$(BUSTIME_API_KEY)
 
 tripupdates:; $(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
+
+# Archive real-time data
+
+COPY = COPY ( \
+	SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
+) TO '/tmp/output.csv' DELIMITER ',' CSV HEADER
+
+gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+	$(PYTHON) src/upload_google_cloud.py $(GOOGLE_BUCKET) $<
+
+$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz:
+	mkdir -p $(YEAR)/$(MONTH)
+	$(PSQL) -c "$(COPY)"
+	xz -c /tmp/output.csv > $@
 
 # Download past data
 
@@ -69,10 +88,10 @@ xz/bus_time_%.csv.xz: | xz
 	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
 
-install: sql/schema.sql
-	$(PYTHON) -m pip install -r requirements.txt
+install: sql/schema.sql requirements.txt
+	$(PYTHON) -m pip install --upgrade --requirement requirements.txt
 	-createdb $(DATABASE)
-	$(GTFSRDB) --create-tables
+	$(PSQL) -f $@
 
 $(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
