@@ -77,6 +77,18 @@ sudo service postgresql95 start
 sudo make install PYTHON=python35 PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
 ```
 
+## Uploading files to Google Cloud
+
+# Setup
+
+Follow the instructions in [Step 1 on this page](https://cloud.google.com/docs/authentication/getting-started) to create a Google API application and download a `client_secret.json` file (the file may have a slightly different name). Make sure to enable the "Google Cloud Storage JSON API" for your application. Then run:
+
+```
+make -e gcloud DATE=2017-07-14 GOOGLE_APPLICATION_CREDENTIALS=client_secret.json PG_DATABASE=mydbname
+```
+
+By default, the Google Cloud bucket will have the same name as the database. Use the variable `GOOGLE_BUCKET` to customize it.
+
 # License
 
 Available under the Apache License.
