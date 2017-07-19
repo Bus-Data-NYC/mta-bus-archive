@@ -1,6 +1,5 @@
 services: 
   - postgresql
-  - mysql
 
 language: python
 
@@ -14,12 +13,10 @@ git:
 env:
   global:
     - secure: dzh7bPKt61bA2iuF8le5/jNNVUfYpybB5LImJOT7up6FfkiqjNNZYgejbMD+QgLc7aCcfNv2wEiNV3WGZY9XpGF40fIOOGl7hx/EJBfvYtOComZCGi53yru731nHoea5ZSCC2tulXfYbJdcQzKgpPw04L2mhmX/W4aPLXyqoVtaCp8RdLTACrIckQoLHcM79bLkh4JedrjegAb2cVF2nrfDK1pEoLX3Y1wTYKkGtuQ4u2Of+q7fEMfnAbptFgHyQpuUzE2qaOW/0yg8C3i5hCzu94My3MdNhsgrTUy1jxeirIhckF38UND8sBjobFjv1pumZ351lv9VKIDrNACaUWEDh1jaLluR+xipGJnmMDd4QIRgFVhnIJSnipkjiJ9WOzKG+IKXeafdKU+sHU8Ox9e7tuP6oxrpHYiELjjPkk/5a1hMWKzp8nI55rtVCMyM6Tw/UdGDCdHLCVXhaLR8gJwD1I9ripxNl2l9kTFcF+NCO4kL4rEn+uQ/02ehHZOlbcDtVn4/JNHcdivgj4kmtOqE15X6doHdQSsWPJxVtdw1sJ8a+swMHwXhexox7G5vOtFNtOUcE5Jl+6ba/H7oRTFo/MfZN9p/omDbEjIiwauV72B+A2zwcK3aESL2dyfCkdg5yfgwRkjJ1v1ISmYNrZd3/8lS/31+XcNlO0zTACd4=
-    - SQLALCHEMY_URL=postgresql://postgres@localhost/bustime
-    - PSQLFLAGS="-U postgres"
-    - DATABASE=bustime
+    - PG_USER=postgres
+    - PG_DATABASE=bustime
 
   matrix:
-    - CMD=download
     - CMD=alerts
     - CMD=positions
     - CMD=tripupdates
@@ -27,12 +24,14 @@ env:
 matrix:
   allow_failures:
     - python: 2.7
-  exclude:
-    - env: CMD=download
-      python: 2.7
 
-install: make -e install
+install:
+  - pip install -r requirements.txt
+  - make -e init
 
-script: make -e $CMD DATE=20170101
+script: make -e $CMD
 
-after_script: psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_vehicle_positions LIMIT 10"
+after_script:
+  - psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_vehicle_positions LIMIT 10"
+  - psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_trip_updates LIMIT 10"
+  - psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_alerts LIMIT 10"

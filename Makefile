@@ -26,7 +26,6 @@ tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
 GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
 
 GOOGLE_BUCKET ?= $(PG_DATABASE)
-GOOGLE_APPLICATION_CREDENTIALS ?= client_secret.json
 
 .PHONY: all psql psql-% init install \
 	positions alerts tripupdates gcloud
@@ -101,7 +100,7 @@ YUM_REQUIRES = git \
 	libffi-devel
 
 init: sql/schema.sql
-	-createdb $(DATABASE)
+	-createdb $(PG_DATABASE)
 	$(PSQL) -f $<
 
 install: requirements.txt
