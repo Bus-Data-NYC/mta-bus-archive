@@ -3,3 +3,4 @@ xz
 *.xz
 keys
 client_secret.json
+*.pyc
