@@ -72,7 +72,7 @@ Pick a database name.  In this example it's `mydbname`.
 ```
 sudo make install
 sudo service postgresql95 start
-sudo make init PG_DATABASE=mydbname PG_HOST=
+sudo make init PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
 ```
 
 ## Uploading files to Google Cloud
