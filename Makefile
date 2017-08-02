@@ -106,14 +106,16 @@ YUM_REQUIRES = git \
 	libffi-devel
 
 init: sql/schema.sql
+	service postgresql95 initdb
+	service postgresql95 start
+	createuser -s $(PG_USER)
 	-createdb $(PG_DATABASE)
 	$(PSQL) -f $<
 
 install: requirements.txt
 	which yum && sudo yum install -y $(YUM_REQUIRES)
-	$(PYTHON) -m pip 2> /dev/null || curl https://bootstrap.pypa.io/get-pip.py | sudo $(PYTHON)
+	$(PYTHON) -m pip > /dev/null || curl https://bootstrap.pypa.io/get-pip.py | sudo $(PYTHON)
 	$(PYTHON) -m pip install --upgrade --requirement $<
-	sudo su - postgres; createuser -s $(PG_USER); exit
 
 $(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
