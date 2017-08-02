@@ -27,6 +27,8 @@ GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
 
 GOOGLE_BUCKET ?= $(PG_DATABASE)
 
+TMPDIR = /tmp
+
 .PHONY: all psql psql-% init install \
 	positions alerts tripupdates gcloud
 
@@ -46,15 +48,15 @@ tripupdates:; $(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
 
 COPY = COPY ( \
 	SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
-) TO '/tmp/output.csv' DELIMITER ',' CSV HEADER
+) TO '$(TMPDIR)/output.csv' DELIMITER ',' CSV HEADER
 
-gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+gcloud: $(TMPDIR)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz:
+$(TMPDIR)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz:
 	mkdir -p $(YEAR)/$(MONTH)
 	$(PSQL) -c "$(COPY)"
-	xz -c /tmp/output.csv > $@
+	xz -c $(TMPDIR)/output.csv > $@
 
 # Download past data
 
@@ -86,6 +88,10 @@ xz/bus_time_%.csv.xz: | xz
 	$(eval YEAR=$(shell echo $* | sed 's/\(.\{4\}\).*/\1/'))
 	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
+
+clean-$(DATE):
+	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
+	rm -r $(TMPDIR)/*
 
 YUM_REQUIRES = git \
 	gcc \
