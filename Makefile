@@ -79,6 +79,13 @@ psql-%: csv/bus_time_%.csv
 	$(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
 		FROM '$(abspath $<)' CSV HEADER DELIMITER AS ',' NULL AS '\N'"
 
+mysql-%: csv/bus_time_%.csv
+	mysql --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
+		IGNORE INTO TABLE positions \
+		FIELDS TERMINATED BY ',' \
+		LINES TERMINATED BY '\r\n' \
+		IGNORE 1 LINES"
+ 
 csv/%.csv: xz/%.csv.xz | csv
 	@rm -f $@
 	xz -kd $<

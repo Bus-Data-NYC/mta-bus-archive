@@ -1,0 +1,17 @@
+CREATE TABLE positions (
+  `timestamp_utc` datetime NOT NULL,
+  `vehicle_id` smallint(4) unsigned zerofill NOT NULL,
+  `latitude` decimal(8,6) NOT NULL,
+  `longitude` decimal(9,6) NOT NULL,
+  `bearing` decimal(5,2) NOT NULL,
+  `progress` tinyint(1) NOT NULL,
+  `service_date` date NOT NULL,
+  `trip_id` varchar(255) NOT NULL,
+  `block_assigned` tinyint(1) NOT NULL,
+  `next_stop_id` int(6) DEFAULT NULL,
+  `dist_along_route` decimal(8,2) DEFAULT NULL,
+  `dist_from_stop` decimal(8,2) DEFAULT NULL,
+  PRIMARY KEY (`timestamp_utc`,`vehicle_id`),
+  KEY `vid` (`vehicle_id`),
+  KEY `sdate` (`service_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
