@@ -28,6 +28,7 @@ GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
 GOOGLE_BUCKET ?= $(PG_DATABASE)
 
 TMPDIR = /tmp
+PREFIX = .
 
 .PHONY: all psql psql-% init install \
 	positions alerts tripupdates gcloud
@@ -50,13 +51,14 @@ COPY = COPY ( \
 	SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
 ) TO '$(TMPDIR)/output.csv' DELIMITER ',' CSV HEADER
 
-gcloud: $(TMPDIR)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+gcloud: $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-$(TMPDIR)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz:
-	mkdir -p $(YEAR)/$(MONTH)
+$(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(MONTH)
 	$(PSQL) -c "$(COPY)"
 	xz -c $(TMPDIR)/output.csv > $@
+
+$(PREFIX)/$(YEAR)/$(MONTH): $(PREFIX); mkdir -p $@
 
 # Download past data
 
