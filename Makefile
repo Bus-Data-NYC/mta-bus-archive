@@ -79,7 +79,7 @@ ARCHIVE_COLS = timestamp, \
 
 psql-%: csv/bus_time_%.csv
 	$(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
-		FROM '$(abspath $<)' CSV HEADER DELIMITER AS ',' NULL AS '\N'"
+		FROM STDIN CSV HEADER DELIMITER AS ',' NULL AS '\N'" < $(abspath $<)
 
 mysql-%: csv/bus_time_%.csv
 	mysql --local-infile -e "LOAD DATA LOCAL INFILE '$<' \

@@ -11,6 +11,6 @@ GOOGLE_APPLICATION_CREDENTIALS=$HOME/mta-bus-archive/client_secret.json
 # PYTHON=
 
 */2 * * * * make -e -C $HOME/mta-bus-archive positions
-5   6 * * * make -e -C $HOME/mta-bus-archive gcloud DATE="$(date -d yesterday '+%Y-%m-%d')"
+5   6 * * * make -e -C $HOME/mta-bus-archive gcloud DATE="$(date -d yesterday '+%Y-%m-%d')" clean-$(date -d yesterday '+%Y-%m-%d')
 # */3 * * * * make -e -C $HOME/mta-bus-archive tripupdates
 # */3 * * * * make -e -C $HOME/mta-bus-archive alerts
