@@ -7,9 +7,28 @@ PG_PORT = 5432
 PG_USER ?= $(USER)
 PG_DATABASE =
 PSQLFLAGS = -U $(PG_USER)
-PSQL = psql $(PG_DATABASE) $(PSQLFLAGS)
 
-CONNECTION_STRING = dbname=$(PG_DATABASE)
+CONNECTION = dbname=$(PG_DATABASE)
+
+ifdef PG_HOST
+CONNECTION += host=$(PG_HOST)
+PSQLFLAGS += -h $(PG_HOST)
+endif
+
+ifdef PG_PORT
+CONNECTION += port=$(PG_PORT)
+PSQLFLAGS += -p $(PG_PORT)
+endif
+
+ifdef PG_USER
+CONNECTION += user=$(PG_USER)
+endif
+
+ifdef PG_PASSWORD
+CONNECTION += password=$(PG_PASSWORD)
+endif
+
+PSQL = psql $(PG_DATABASE) $(PSQLFLAGS)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
@@ -23,11 +42,10 @@ alerts 		= http://gtfsrt.prod.obanyc.com/alerts
 positions 	= http://gtfsrt.prod.obanyc.com/vehiclePositions
 tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
 
-GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION_STRING)"
+GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION)"
 
 GOOGLE_BUCKET ?= $(PG_DATABASE)
 
-TMPDIR = /tmp
 PREFIX = .
 
 .PHONY: all psql psql-% init install \
