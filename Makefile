@@ -47,18 +47,19 @@ tripupdates:; $(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
 
 # Archive real-time data
 
-COPY = COPY ( \
-	SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
-) TO '$(TMPDIR)/output.csv' DELIMITER ',' CSV HEADER
-
 gcloud: $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-$(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(MONTH)
-	$(PSQL) -c "$(COPY)"
-	xz -c $(TMPDIR)/output.csv > $@
+%.xz: %
+	xz -c $< > $@
 
-$(PREFIX)/$(YEAR)/$(MONTH): $(PREFIX); mkdir -p $@
+$(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv: | $(PREFIX)/$(YEAR)/$(MONTH)
+	$(PSQL) -c "COPY (\
+	SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
+	) TO STDOUT DELIMITER ',' CSV HEADER" > $@
+
+$(PREFIX)/$(YEAR)/$(MONTH): | $(PREFIX)
+	mkdir -p $@
 
 # Download past data
 
