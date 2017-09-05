@@ -33,7 +33,7 @@ PSQL = psql $(PSQLFLAGS)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
-DATE = 2017-07-01
+DATE = 2001-01-01
 YEAR = $(shell echo $(DATE) | sed 's/\(.\{4\}\)-.*/\1/')
 MONTH =	$(shell echo $(DATE) | sed 's/.\{4\}-\(.\{2\}\)-.*/\1/')
 
@@ -49,10 +49,8 @@ GOOGLE_BUCKET ?= $(PG_DATABASE)
 
 PREFIX = .
 
-.PHONY: all psql psql-% init install \
+.PHONY: all psql psql-% init install clean-date \
 	positions alerts tripupdates gcloud
-
-.PRECIOUS: xz/bus_time_%.csv.xz
 
 all:
 
@@ -118,9 +116,8 @@ xz/bus_time_%.csv.xz: | xz
 	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
 	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
 
-clean-$(DATE):
+clean-date:
 	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
-	rm -f $(TMPDIR)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz $(TMPDIR)/output.csv
 
 YUM_REQUIRES = git \
 	gcc \
