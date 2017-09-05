@@ -2,11 +2,11 @@ shell = bash
 
 PYTHON = python
 
-PG_HOST = localhost
-PG_PORT = 5432
-PG_USER ?= $(USER)
+PG_HOST =
+PG_PORT =
+PG_USER =
 PG_DATABASE =
-PSQLFLAGS = -U $(PG_USER)
+PSQLFLAGS = $(PG_DATABASE)
 
 CONNECTION = dbname=$(PG_DATABASE)
 
@@ -22,13 +22,14 @@ endif
 
 ifdef PG_USER
 CONNECTION += user=$(PG_USER)
+PSQLFLAGS += -U $(PG_USER)
 endif
 
 ifdef PG_PASSWORD
 CONNECTION += password=$(PG_PASSWORD)
 endif
 
-PSQL = psql $(PG_DATABASE) $(PSQLFLAGS)
+PSQL = psql $(PSQLFLAGS)
 
 ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
 
