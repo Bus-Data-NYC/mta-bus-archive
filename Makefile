@@ -132,11 +132,13 @@ YUM_REQUIRES = git \
 	libffi-devel
 
 init: sql/schema.sql
+	$(PSQL) -f $<
+
+create:
 	service postgresql95 initdb
 	service postgresql95 start
 	createuser -s $(PG_USER)
 	-createdb $(PG_DATABASE)
-	$(PSQL) -f $<
 
 install: requirements.txt
 	which yum && sudo yum install -y $(YUM_REQUIRES)

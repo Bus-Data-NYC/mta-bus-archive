@@ -70,8 +70,8 @@ The included `crontab` shows an example setup for downloading data from the MTA 
 Pick a database name.  In this example it's `mydbname`.
 
 ```
-sudo make install
-sudo service postgresql95 start
+sudo make install  # downloads requirements
+sudo make create  # initializes postgresql
 sudo make init PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
 ```
 

@@ -28,6 +28,9 @@ matrix:
   allow_failures:
     - python: 2.7
 
+before_install:
+  - psql -c 'create database bustime' -U $PG_USER
+
 install:
   - pip install -r requirements.txt
   - make -e init
@@ -35,6 +38,6 @@ install:
 script: make -e $CMD
 
 after_script:
-  - psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_vehicle_positions LIMIT 10"
-  - psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_trip_updates LIMIT 10"
-  - psql $DATABASE $PSQLFLAGS -c "SELECT * FROM rt_alerts LIMIT 10"
+  - psql $PG_DATABASE -U $PG_USER -c "SELECT * FROM rt_vehicle_positions LIMIT 10"
+  - psql $PG_DATABASE -U $PG_USER -c "SELECT * FROM rt_trip_updates LIMIT 10"
+  - psql $PG_DATABASE -U $PG_USER -c "SELECT * FROM rt_alerts LIMIT 10"
