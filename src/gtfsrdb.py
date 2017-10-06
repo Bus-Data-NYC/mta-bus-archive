@@ -174,7 +174,7 @@ def parse_informed_entity(entity):
 def insert_alerts(cursor, entities):
     alert_cols = (
         'start',
-        'end',
+        '"end"',
         'cause',
         'effect',
         'url',
@@ -297,9 +297,9 @@ def main():
                     conn.commit()
 
     except psycopg2.ProgrammingError as e:
+        logging.error("database error:")
         logging.error(str(e).strip())
-        logging.error("Couldn't connect to database")
-        return
+        sys.exit(1)
 
 
 if __name__ == '__main__':
