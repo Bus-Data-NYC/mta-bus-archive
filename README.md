@@ -26,12 +26,12 @@ make install PG_DATABASE=dbname PSQLFLAGS="-U psql_user"
 
 Download a (UTC) day from [data.mytransit.nyc](http://data.mytransit.nyc), and import into the Postgres database `dbname`:
 ```
-make download DATE=20161231 PG_DATABASE=dbname
+make download DATE=2016-12-31 PG_DATABASE=dbname
 ```
 
 The same, for MySQL:
 ```
-make mysql_download DATE=20161231 PG_DATABASE=dbname
+make mysql_download DATE=2016-12-31 PG_DATABASE=dbname
 ```
 
 ## Scraping

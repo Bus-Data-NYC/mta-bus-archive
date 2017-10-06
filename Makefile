@@ -80,7 +80,7 @@ $(PREFIX)/$(YEAR)/$(MONTH): | $(PREFIX)
 
 # Download past data
 
-download: psql-$(DATE)
+download: psql-$(subst -,,$(DATE))
 
 ARCHIVE_COLS = timestamp, \
 	vehicle_id, \
