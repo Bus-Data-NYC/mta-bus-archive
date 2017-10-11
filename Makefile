@@ -118,6 +118,7 @@ xz/bus_time_%.csv.xz: | xz
 
 clean-date:
 	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
+	rm -f xz/bus_time_$(subst -,,$(DATE)).csv.xz csv/bus_time_$(subst -,,$(DATE)).csv
 
 YUM_REQUIRES = git \
 	gcc \
@@ -141,7 +142,7 @@ create:
 	-createdb $(PG_DATABASE)
 
 install: requirements.txt
-	which yum && sudo yum install -y $(YUM_REQUIRES)
+	-which yum && sudo yum install -y $(YUM_REQUIRES)
 	$(PYTHON) -m pip > /dev/null || curl https://bootstrap.pypa.io/get-pip.py | sudo $(PYTHON)
 	$(PYTHON) -m pip install --upgrade --requirement $<
 
