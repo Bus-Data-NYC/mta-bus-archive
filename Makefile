@@ -118,7 +118,7 @@ xz/bus_time_%.csv.xz: | xz
 
 clean-date:
 	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
-	rm -f xz/bus_time_$(subst -,,$(DATE)).csv.xz csv/bus_time_$(subst -,,$(DATE)).csv
+	rm -f $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
 
 YUM_REQUIRES = git \
 	gcc \
