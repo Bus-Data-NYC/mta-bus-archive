@@ -31,8 +31,6 @@ endif
 
 PSQL = psql $(PSQLFLAGS)
 
-ARCHIVE = http://data.mytransit.nyc.s3.amazonaws.com/bus_time
-
 DATE = 2001-01-01
 YEAR = $(shell echo $(DATE) | sed 's/\(.\{4\}\)-.*/\1/')
 MONTH =	$(shell echo $(DATE) | sed 's/.\{4\}-\(.\{2\}\)-.*/\1/')
@@ -49,6 +47,9 @@ GOOGLE_BUCKET ?= $(PG_DATABASE)
 
 PREFIX = .
 
+MODE ?= download
+ARCHIVE ?= gcloud
+
 .PHONY: all psql psql-% init install clean-date \
 	positions alerts tripupdates gcloud
 
@@ -62,63 +63,72 @@ positions:; $(GTFSRDB) --vehicle-positions $(positions)?key=$(BUSTIME_API_KEY)
 
 tripupdates:; $(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
 
+ifeq ($(MODE),upload)
+
 # Archive real-time data
 
 gcloud: $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-%.xz: %
-	xz -c $< > $@
-
-$(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv: | $(PREFIX)/$(YEAR)/$(MONTH)
+$(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
-	SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
-	) TO STDOUT DELIMITER ',' CSV HEADER" > $@
+		SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
+		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
+	xz -z - > $@
 
-$(PREFIX)/$(YEAR)/$(MONTH): | $(PREFIX)
-	mkdir -p $@
+clean-date:
+	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
+	rm -f $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
+
+else
 
 # Download past data
 
+ifeq ($(ARCHIVE),mytransit)
+
+ARCHIVE_COLS = timestamp,vehicle_id, \
+	latitude,longitude,bearing,progress, \
+	trip_start_date,trip_id,block_assigned, \
+	stop_id,dist_along_route,dist_from_stop
+
+ARCHIVE_URL = http://data.mytransit.nyc.s3.amazonaws.com/bus_time/$(YEAR)/$(YEAR)-$(MONTH)/bus_time_$*.csv.xz
 download: psql-$(subst -,,$(DATE))
 
-ARCHIVE_COLS = timestamp, \
-	vehicle_id, \
-	latitude, \
-	longitude, \
-	bearing, \
-	progress, \
-	trip_start_date, \
-	trip_id, \
-	block_assigned, \
-	stop_id, \
-	dist_along_route, \
-	dist_from_stop
+else
 
-psql-%: csv/bus_time_%.csv
+ARCHIVE_COLS = timestamp,trip_id, \
+	route_id,trip_start_time,trip_start_date, \
+	vehicle_id,vehicle_label,vehicle_license_plate,	\
+	latitude,longitude,bearing,speed,stop_id, \
+	stop_status,occupancy_status,congestion_level, \
+	progress,block_assigned,dist_along_route,dist_from_stop
+
+ARCHIVE_URL = https://storage.googleapis.com/mta-bus-archive/$(YEAR)/$(MONTH)/$*-bus-positions.csv.xz
+download: psql-$(DATE)
+
+endif
+
+psql-%: $(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv
 	$(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
-		FROM STDIN CSV HEADER DELIMITER AS ',' NULL AS '\N'" < $(abspath $<)
+		FROM STDIN (FORMAT CSV, HEADER true)" < $<
 
-mysql-%: csv/bus_time_%.csv
+mysql-%: $(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv
 	mysql --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
 		IGNORE INTO TABLE positions \
 		FIELDS TERMINATED BY ',' \
 		LINES TERMINATED BY '\r\n' \
 		IGNORE 1 LINES"
- 
-csv/%.csv: xz/%.csv.xz | csv
-	@rm -f $@
-	xz -kd $<
-	mv $(<D)/$(@F) $@
 
-xz/bus_time_%.csv.xz: | xz
-	$(eval YEAR=$(shell echo $* | sed 's/\(.\{4\}\).*/\1/'))
-	$(eval MONTH=$(shell echo $* | sed 's/.\{4\}\(.\{2\}\).*/\1/'))
-	curl -o $@ $(ARCHIVE)/$(YEAR)/$(YEAR)-$(MONTH)/$(@F)
+%.csv: %.csv.xz
+	xz -cd $< > $@
 
-clean-date:
-	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
-	rm -f $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
+$(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(MONTH)
+	curl -L -o $@ $(ARCHIVE_URL)
+
+endif
+
+$(PREFIX)/$(YEAR)/$(MONTH): | $(PREFIX)
+	mkdir -p $@
 
 YUM_REQUIRES = git \
 	gcc \
@@ -148,5 +158,3 @@ install: requirements.txt
 
 $(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
-
-csv xz: ; mkdir -p $@

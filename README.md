@@ -90,10 +90,12 @@ Next, create a bucket for the data using the [Google Cloud Console](https://cons
 
 You've now authenticated yourself to the Google API. You'll now be able to run a command like:
 ```
-make -e gcloud DATE=2017-07-14 PG_DATABASE=mydbname
+make -e gcloud DATE=2017-07-14 PG_DATABASE=mydbname MODE=upload
 ```
 
 By default, the Google Cloud bucket will have the same name as the database. Use the variable `GOOGLE_BUCKET` to customize it.
+
+Note the `MODE=upload` – this tells the Makefile to use the set of commands
 
 # License
 
