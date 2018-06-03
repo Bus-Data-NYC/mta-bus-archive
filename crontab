@@ -1,16 +1,20 @@
 PATH=/bin:/usr/bin:/usr/local/bin
 SHELL=/bin/bash
+# PYTHON=
+
 BUSTIME_API_KEY=
-# Change this to your Postgres DB name 
-PG_DATABASE=
+
+# Set your your Postgres DB connection params
+# PGDATABASE=
+# PGHOST=
+# PGUSER=
+
 # By default the Google Cloud bucket will have the same name as the db.
 # GOOGLE_BUCKET=
 # Change this to match where you put your file
 GOOGLE_APPLICATION_CREDENTIALS=$HOME/mta-bus-archive/client_secret.json
-# PG_HOST=""
-# PYTHON=
 
-*/2 * * * * make -e -C $HOME/mta-bus-archive positions
-5   6 * * * make -e -C $HOME/mta-bus-archive gcloud clean-date DATE=$(date +\%Y-\%m-\%d -d yesterday)
-# */3 * * * * make -e -C $HOME/mta-bus-archive tripupdates
-# */3 * * * * make -e -C $HOME/mta-bus-archive alerts
+*/2 * * * * make -C $HOME/mta-bus-archive positions
+5   6 * * * make -C $HOME/mta-bus-archive gcloud clean-date MODE=upload DATE=$(date +\%Y-\%m-\%d -d yesterday)
+# */3 * * * * make -C $HOME/mta-bus-archive tripupdates
+# */3 * * * * make -C $HOME/mta-bus-archive alerts

@@ -10,28 +10,32 @@ Requirements:
 
 ## Set up
 
-Create a set of tables in the Postgres database `dbname`:
+Specify your connection parameters using the standard [Postgres environment variables](https://www.postgresql.org/docs/current/static/libpq-envars.html):
 ```
-make install PG_DATABASE=dbname
+PGDATABASE=dbname
+PGUSER=myuser
+PGHOST=myhost.com
 ```
 
-This command will create a number of whose tables that begin with `rt_`, notable `rt_vehicle_positions`, `rt_alerts` and `rt_trip_updates`. It will also install the Python requirements, including the [Google Protobuf](https://pypi.python.org/pypi/protobuf/3.3.0) library.
+You may skip this step if you're using a socket connection to your user's database.
 
-You can specify a remote table using the `PSQLFLAGS` or `MYQSLFLAGS` variables:
+## Initiation
+
+This command will create a number of whose tables that begin with `rt_`, notably `rt_vehicle_positions`, `rt_alerts` and `rt_trip_updates`. It will also install the Python requirements, including the [Google Protobuf](https://pypi.python.org/pypi/protobuf/3.3.0) library.
 ```
-make install PG_DATABASE=dbname PSQLFLAGS="-U psql_user"
+make install
 ```
 
 ## Download an MTA Bus Time archive file
 
 Download a (UTC) day from [data.mytransit.nyc](http://data.mytransit.nyc), and import into the Postgres database `dbname`:
 ```
-make download DATE=2016-12-31 PG_DATABASE=dbname
+make download DATE=2016-12-31
 ```
 
 The same, for MySQL:
 ```
-make mysql_download DATE=2016-12-31 PG_DATABASE=dbname
+make mysql_download DATE=2016-12-31
 ```
 
 ## Scraping
@@ -48,17 +52,17 @@ export BUSTIME_API_KEY=xyz123
 
 Download the current positions from the MTA API and save a local PostgreSQL database named `mtadb`:
 ```
-make positions PG_DATABASE=dbname
+make positions
 ```
 
 Download current trip updates:
 ```
-make tripupdates PG_DATABASE=dbname
+make tripupdates
 ```
 
 Download current alerts:
 ```
-make alerts PG_DATABASE=dbname
+make alerts
 ```
 
 ## Scheduling
@@ -70,9 +74,11 @@ The included `crontab` shows an example setup for downloading data from the MTA 
 Pick a database name.  In this example it's `mydbname`.
 
 ```
+export PGDATABASE=mydbname
+export PGUSER=myusername
 sudo make install  # downloads requirements
 sudo make create  # initializes postgresql
-sudo make init PG_DATABASE=mydbname PG_HOST= PG_USER=myusername
+sudo make init
 ```
 
 ## Uploading files to Google Cloud

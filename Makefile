@@ -2,34 +2,12 @@ shell = bash
 
 PYTHON = python
 
-PG_HOST =
-PG_PORT =
-PG_USER =
-PG_DATABASE =
-PSQLFLAGS = $(PG_DATABASE)
-
-CONNECTION = dbname=$(PG_DATABASE)
-
-ifdef PG_HOST
-CONNECTION += host=$(PG_HOST)
-PSQLFLAGS += -h $(PG_HOST)
-endif
-
-ifdef PG_PORT
-CONNECTION += port=$(PG_PORT)
-PSQLFLAGS += -p $(PG_PORT)
-endif
-
-ifdef PG_USER
-CONNECTION += user=$(PG_USER)
-PSQLFLAGS += -U $(PG_USER)
-endif
-
-ifdef PG_PASSWORD
-CONNECTION += password=$(PG_PASSWORD)
-endif
-
+PGUSER ?= $(USER)
+PGDATABASE ?= $(PGUSER)
+PSQLFLAGS = $(PGDATABASE)
 PSQL = psql $(PSQLFLAGS)
+
+export PGDATABASE PGUSER
 
 DATE = 2001-01-01
 YEAR = $(shell echo $(DATE) | sed 's/\(.\{4\}\)-.*/\1/')
@@ -41,9 +19,9 @@ alerts 		= http://gtfsrt.prod.obanyc.com/alerts
 positions 	= http://gtfsrt.prod.obanyc.com/vehiclePositions
 tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
 
-GTFSRDB = $(PYTHON) src/gtfsrdb.py -d "$(CONNECTION)"
+GTFSRDB = $(PYTHON) src/gtfsrdb.py
 
-GOOGLE_BUCKET ?= $(PG_DATABASE)
+GOOGLE_BUCKET ?= $(PGDATABASE)
 
 PREFIX = .
 

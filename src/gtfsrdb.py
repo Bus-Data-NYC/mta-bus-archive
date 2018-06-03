@@ -21,16 +21,17 @@
 # Authors:
 # Neil Freeman
 
-
+import os
 import sys
+import getpass
 from datetime import datetime
 from argparse import ArgumentParser
 import logging
 import pytz
-import gtfs_realtime_pb2
-import psycopg2
 import requests
+import psycopg2
 from psycopg2.extras import execute_values
+import gtfs_realtime_pb2
 import model
 
 
@@ -258,16 +259,32 @@ def insert_trips(cursor, entities):
         execute_values(cursor, sql, [parse_stoptimeupdate(e) for e in entity.trip_update.stop_time_update])
 
 
+def connection_params():
+    pg = {
+        'PGUSER': 'user',
+        'PGHOST': 'host',
+        'PGPORT': 'port',
+        'PGPASSWORD': 'password',
+        'PGPASSFILE': 'passfile',
+    }
+    params = {'dbname': os.environ.get('PGDATABASE', getpass.getuser())}
+    params.update({v: os.environ[k] for k, v in pg.items() if k in os.environ})
+    return params
+
+
 def main():
-    parser = ArgumentParser()
+    desc = """
+        Scrape GTFS-rt positions into a PostgreSQL database.
+        By default, a local connection to your user's database will be created.
+        To specify other connection parameters, use the standard PG* environment variables.
+    """
+    parser = ArgumentParser(description=desc)
     parser.add_argument('-t', '--trip-updates', dest='trips',
                         help='The trip updates URL', metavar='URL')
     parser.add_argument('-a', '--alerts', default=None, metavar='URL',
                         help='The alerts URL')
     parser.add_argument('-p', '--vehicle-positions', dest='vehicles',
                         help='The vehicle positions URL', metavar='URL')
-    parser.add_argument('-d', '--database', default=None,
-                        help='Database connection string')
 
     args = parser.parse_args()
 
@@ -280,7 +297,7 @@ def main():
         return
 
     try:
-        with psycopg2.connect(args.database) as conn:
+        with psycopg2.connect(**connection_params()) as conn:
             urls = (args.alerts, args.trips, args.vehicles)
             inserters = (insert_alerts, insert_trips, insert_vehicles)
 
