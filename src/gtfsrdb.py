@@ -292,10 +292,6 @@ def main():
     # Start logging.
     start_logger(level)
 
-    if args.database is None:
-        logging.error('No database specified!')
-        return
-
     try:
         with psycopg2.connect(**connection_params()) as conn:
             urls = (args.alerts, args.trips, args.vehicles)

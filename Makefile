@@ -126,8 +126,8 @@ init: sql/schema.sql
 create:
 	service postgresql95 initdb
 	service postgresql95 start
-	createuser -s $(PG_USER)
-	-createdb $(PG_DATABASE)
+	createuser -s $(PGUSER)
+	-createdb $(PGDATABASE)
 
 install: requirements.txt
 	-which yum && sudo yum install -y $(YUM_REQUIRES)
