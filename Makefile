@@ -46,6 +46,9 @@ ifeq ($(MODE),upload)
 gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
+s3: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+	aws s3 cp --quiet --acl public-read $< s3://$(S3BUCKET)/$<
+
 $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
 		SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
