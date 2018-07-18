@@ -23,8 +23,6 @@ GTFSRDB = $(PYTHON) src/gtfsrdb.py
 
 GOOGLE_BUCKET ?= $(PGDATABASE)
 
-PREFIX = .
-
 MODE ?= download
 ARCHIVE ?= gcloud
 
@@ -45,10 +43,10 @@ ifeq ($(MODE),upload)
 
 # Archive real-time data
 
-gcloud: $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-$(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(MONTH)
+$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
 		SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
@@ -56,7 +54,7 @@ $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(M
 
 clean-date:
 	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
-	rm -f $(PREFIX)/$(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
+	rm -f $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
 
 else
 
@@ -86,11 +84,11 @@ download: psql-$(DATE)
 
 endif
 
-psql-%: $(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv
+psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
 	$(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)" < $<
 
-mysql-%: $(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv
+mysql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
 	mysql --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
 		IGNORE INTO TABLE positions \
 		FIELDS TERMINATED BY ',' \
@@ -100,12 +98,12 @@ mysql-%: $(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv
 %.csv: %.csv.xz
 	xz -cd $< > $@
 
-$(PREFIX)/$(YEAR)/$(MONTH)/%-bus-positions.csv.xz: | $(PREFIX)/$(YEAR)/$(MONTH)
+$(YEAR)/$(MONTH)/%-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 	curl -L -o $@ $(ARCHIVE_URL)
 
 endif
 
-$(PREFIX)/$(YEAR)/$(MONTH): | $(PREFIX)
+$(YEAR)/$(MONTH):
 	mkdir -p $@
 
 YUM_REQUIRES = git \
