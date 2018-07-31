@@ -71,7 +71,7 @@ ARCHIVE_COLS = timestamp,vehicle_id, \
 	stop_id,dist_along_route,dist_from_stop
 
 ARCHIVE_URL = http://data.mytransit.nyc.s3.amazonaws.com/bus_time/$(YEAR)/$(YEAR)-$(MONTH)/bus_time_$*.csv.xz
-download: psql-$(subst -,,$(DATE))
+download: $(YEAR)/$(MONTH)/$(subst -,,$(DATE))-bus-positions.csv.xz
 
 else
 
@@ -83,8 +83,7 @@ ARCHIVE_COLS = timestamp,trip_id, \
 	progress,block_assigned,dist_along_route,dist_from_stop
 
 ARCHIVE_URL = https://storage.googleapis.com/mta-bus-archive/$(YEAR)/$(MONTH)/$*-bus-positions.csv.xz
-download: psql-$(DATE)
-
+download: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 endif
 
 psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
