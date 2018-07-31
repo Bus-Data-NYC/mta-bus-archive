@@ -2,7 +2,7 @@
 
 Download archived NYC MTA bus position data, and scrape gtfs-realtime data from the MTA.
 
-Bus position data is archived at [data.mytransit.nyc](http://data.mytransit.nyc).
+Bus position data for July 2017 forward is archived at `https://s3.amazonaws.com/nycbuspositions`. Archive files follow the pattern `https://s3.amazonaws.com/nycbuspositions/YYYY/MM/YYYY-MM-DD-bus-positions.csv.xz`, e.g. `https://s3.amazonaws.com/nycbuspositions/2017/07/2017-07-14-bus-positions.csv.xz`.
 
 Requirements:
 * Python 3.x
