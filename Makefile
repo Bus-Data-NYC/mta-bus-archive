@@ -92,9 +92,10 @@ download: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 
 endif
 
-psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
-	$(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
-		FROM STDIN (FORMAT CSV, HEADER true)" < $<
+psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv.xz
+	xz --decompress --stdout $< \
+	| $(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
+		FROM STDIN (FORMAT CSV, HEADER true)"
 
 mysql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
 	mysql --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
