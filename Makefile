@@ -24,7 +24,7 @@ GTFSRDB = $(PYTHON) src/gtfsrdb.py
 GOOGLE_BUCKET ?= $(PGDATABASE)
 
 MODE ?= download
-ARCHIVE ?= gcloud
+ARCHIVE ?= s3
 
 .PHONY: all psql psql-% init install clean-date \
 	positions alerts tripupdates gcloud
@@ -63,7 +63,19 @@ else
 
 # Download past data
 
-ifeq ($(ARCHIVE),mytransit)
+ARCHIVE_COLS = timestamp,trip_id, \
+	route_id,trip_start_time,trip_start_date, \
+	vehicle_id,vehicle_label,vehicle_license_plate,	\
+	latitude,longitude,bearing,speed,stop_id, \
+	stop_status,occupancy_status,congestion_level, \
+	progress,block_assigned,dist_along_route,dist_from_stop
+
+ifeq ($(ARCHIVE),s3)
+
+ARCHIVE_URL = https://s3.amazonaws.com/nycbuspositions/$(YEAR)/$(MONTH)/$*-bus-positions.csv.xz
+download: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+
+else ifeq ($(ARCHIVE),mytransit)
 
 ARCHIVE_COLS = timestamp,vehicle_id, \
 	latitude,longitude,bearing,progress, \
@@ -73,17 +85,11 @@ ARCHIVE_COLS = timestamp,vehicle_id, \
 ARCHIVE_URL = http://data.mytransit.nyc.s3.amazonaws.com/bus_time/$(YEAR)/$(YEAR)-$(MONTH)/bus_time_$*.csv.xz
 download: $(YEAR)/$(MONTH)/$(subst -,,$(DATE))-bus-positions.csv.xz
 
-else
-
-ARCHIVE_COLS = timestamp,trip_id, \
-	route_id,trip_start_time,trip_start_date, \
-	vehicle_id,vehicle_label,vehicle_license_plate,	\
-	latitude,longitude,bearing,speed,stop_id, \
-	stop_status,occupancy_status,congestion_level, \
-	progress,block_assigned,dist_along_route,dist_from_stop
+else ifeq ($(ARCHIVE),gcloud)
 
 ARCHIVE_URL = https://storage.googleapis.com/mta-bus-archive/$(YEAR)/$(MONTH)/$*-bus-positions.csv.xz
 download: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+
 endif
 
 psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
