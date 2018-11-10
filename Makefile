@@ -26,7 +26,8 @@ GOOGLE_BUCKET ?= $(PGDATABASE)
 MODE ?= download
 ARCHIVE ?= s3
 
-.PHONY: all psql psql-% init install clean-date \
+.PHONY: all psql psql-% mysql mysql-% \
+	init install clean-date \
 	positions alerts tripupdates gcloud
 
 all:
@@ -92,10 +93,14 @@ download: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 
 endif
 
+psql: psql-$(DATE)
+
 psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv.xz
 	xz --decompress --stdout $< \
 	| $(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)"
+
+mysql: mysql-$(DATE)
 
 mysql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv
 	mysql --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
