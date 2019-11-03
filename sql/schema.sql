@@ -1,4 +1,6 @@
-CREATE TYPE alertcause AS ENUM (
+CREATE SCHEMA rt;
+
+CREATE TYPE rt.alertcause AS ENUM (
     'UNKNOWN_CAUSE',
     'TECHNICAL_PROBLEM',
     'ACCIDENT',
@@ -9,7 +11,7 @@ CREATE TYPE alertcause AS ENUM (
     'POLICE_ACTIVITY',
     'MEDICAL_EMERGENCY'
 );
-CREATE TYPE alerteffect AS ENUM (
+CREATE TYPE rt.alerteffect AS ENUM (
     'NO_SERVICE',
     'REDUCED_SERVICE',
     'SIGNIFICANT_DELAYS',
@@ -20,13 +22,13 @@ CREATE TYPE alerteffect AS ENUM (
     'UNKNOWN_EFFECT',
     'STOP_MOVED'
 );
-CREATE TYPE congestionlevel AS ENUM (
+CREATE TYPE rt.congestionlevel AS ENUM (
     'UNKNOWN_CONGESTION_LEVEL',
     'RUNNING_SMOOTHLY',
     'STOP_AND_GO',
     'CONGESTION'
 );
-CREATE TYPE occupancystatus AS ENUM (
+CREATE TYPE rt.occupancystatus AS ENUM (
     'EMPTY',
     'MANY_SEATS_AVAILABLE',
     'FEW_SEATS_AVAILABLE',
@@ -35,23 +37,23 @@ CREATE TYPE occupancystatus AS ENUM (
     'FULL',
     'NOT_ACCEPTING_PASSENGERS'
 );
-CREATE TYPE stopstatus AS ENUM (
+CREATE TYPE rt.stopstatus AS ENUM (
     'INCOMING_AT',
     'STOPPED_AT',
     'IN_TRANSIT_TO'
 );
-CREATE TYPE stoptimeschedule AS ENUM (
+CREATE TYPE rt.stoptimeschedule AS ENUM (
     'SCHEDULED',
     'SKIPPED',
     'NO_DATA'
 );
-CREATE TYPE tripschedule AS ENUM (
+CREATE TYPE rt.tripschedule AS ENUM (
     'SCHEDULED',
     'ADDED',
     'UNSCHEDULED',
     'CANCELED'
 );
-CREATE TABLE rt_alerts (
+CREATE TABLE rt.alerts (
     oid serial PRIMARY KEY,
     start timestamp with time zone,
     "end" timestamp with time zone,
@@ -61,7 +63,7 @@ CREATE TABLE rt_alerts (
     header_text text,
     description_text text
 );
-CREATE TABLE rt_entity_selectors (
+CREATE TABLE rt.entity_selectors (
     oid serial PRIMARY KEY,
     agency_id text,
     route_id text,
@@ -73,7 +75,7 @@ CREATE TABLE rt_entity_selectors (
     trip_start_date date,
     alert_id integer REFERENCES rt_alerts(oid)
 );
-CREATE TABLE rt_trip_updates (
+CREATE TABLE rt.trip_updates (
     oid serial PRIMARY KEY,
     trip_id text,
     route_id text,
@@ -85,7 +87,7 @@ CREATE TABLE rt_trip_updates (
     vehicle_license_plate text,
     "timestamp" timestamp with time zone
 );
-CREATE TABLE rt_stop_time_updates (
+CREATE TABLE rt.stop_time_updates (
     oid serial PRIMARY KEY,
     stop_sequence integer,
     stop_id text,
@@ -98,7 +100,7 @@ CREATE TABLE rt_stop_time_updates (
     schedule_relationship stoptimeschedule,
     trip_update_id integer REFERENCES rt_trip_updates(oid)
 );
-CREATE TABLE rt_vehicle_positions (
+CREATE TABLE rt.vehicle_positions (
     "timestamp" timestamp with time zone NOT NULL,
     trip_id text,
     route_id text,

@@ -52,12 +52,12 @@ s3: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 
 $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
-		SELECT * FROM rt_vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
+		SELECT * FROM rt.vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
 clean-date:
-	$(PSQL) -c "DELETE FROM rt_vehicle_positions where timestamp::date = '$(DATE)'::date"
+	$(PSQL) -c "DELETE FROM rt.vehicle_positions where timestamp::date = '$(DATE)'::date"
 	rm -f $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
 
 else
@@ -97,7 +97,7 @@ psql: psql-$(DATE)
 
 psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv.xz
 	xz --decompress --stdout $< \
-	| $(PSQL) -c "COPY rt_vehicle_positions ($(ARCHIVE_COLS)) \
+	| $(PSQL) -c "COPY rt.vehicle_positions ($(ARCHIVE_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)"
 
 mysql: mysql-$(DATE)
