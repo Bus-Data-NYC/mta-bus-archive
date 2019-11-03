@@ -28,9 +28,10 @@ from datetime import datetime
 from argparse import ArgumentParser
 import logging
 import pytz
-import requests
 import psycopg2
 from psycopg2.extras import execute_values
+import google.protobuf
+import nyct_subway_pb2
 import gtfs_realtime_pb2
 import model
 
@@ -39,7 +40,14 @@ INSERT = "INSERT INTO {table} ({columns}) VALUES %s ON CONFLICT DO NOTHING"
 
 
 def insert_stmt(table, columns):
-    return INSERT.format(table=table, columns=', '.join(columns))
+    return INSERT.format(table=table, columns=', '.join(columns)).strip()
+
+
+def insert_stmt_returning(table, columns, returning):
+    placeholders = '(' + ('%s, ' * len(columns)).strip(' ,') + ')'
+    return (
+        INSERT.format(table=table, columns=', '.join(columns)) % placeholders
+    ) + ' RETURNING ' + returning
 
 
 def fromtimestamp(timestamp):
@@ -57,7 +65,7 @@ def get_translated(translation, lang=None):
     # If we don't find the requested language, return this
     lang = lang or 'EN'
 
-    if len(translation) == 0:
+    if not translation:
         # If empty, return.
         return None
 
@@ -84,52 +92,61 @@ def getenum(cls, value, default=None):
     except ValueError:
         if default:
             return cls(default).name
-        else:
-            return None
+        return None
 
 
-def load_entity(url):
+def load_message(filename):
     fm = gtfs_realtime_pb2.FeedMessage()
 
-    with requests.get(url) as r:
-        fm.ParseFromString(r.content)
+    with open(filename, 'rb') as f:
+        try:
+            fm.ParseFromString(f.read())
+        except (RuntimeWarning, google.protobuf.message.DecodeError) as e:
+            logging.error('ERROR: %s in %s', e, filename)
+            return fm, e
 
     # Check the feed version
-    if fm.header.gtfs_realtime_version != '1.0':
-        logging.warning('Warning: feed version has changed. Expected 1.0, found %s', fm.header.gtfs_realtime_version)
+    if fm.entity and fm.header.gtfs_realtime_version != '1.0':
+        logging.warning('WARNING: feed version has changed. Expected 1.0, found %s',
+                        fm.header.gtfs_realtime_version)
+        logging.warning('file: %s', filename)
 
-    return fm.entity
+    return fm, None
 
 
 def parse_vehicle(entity):
     vp = entity.vehicle
-    return (
-        vp.trip.trip_id,  # trip_id
-        vp.trip.route_id,  # route_id
+    nyct_trip_descriptor = vp.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor]
+    return [
+        vp.trip.trip_id or None,  # trip_id
+        vp.trip.route_id or None,  # route_id
         vp.trip.start_time or None,  # trip_start_time
-        vp.trip.start_date,  # trip_start_date
-        vp.stop_id,  # stop_id
-        getenum(model.StopStatus, vp.current_status),  # stop_status
-        vp.vehicle.id,  # vehicle_id
+        vp.trip.start_date or None,  # trip_start_date
+        vp.stop_id or None,  # stop_id
+        vp.current_stop_sequence or None,  # stop_sequence
+        getenum(model.StopStatus, vp.current_status) or None,  # stop_status
+        vp.vehicle.id or nyct_trip_descriptor.train_id or None,  # vehicle_id
         vp.vehicle.label or None,  # vehicle_label
         vp.vehicle.license_plate or None,  # vehicle_license_plate
-        vp.position.latitude,  # latitude
-        vp.position.longitude,  # longitude
-        vp.position.bearing,  # bearing
-        vp.position.speed,  # speed
+        vp.position.latitude or None,  # latitude
+        vp.position.longitude or None,  # longitude
+        vp.position.bearing or None,  # bearing
+        vp.position.speed or None,  # speed
         getenum(model.OccupancyStatus, vp.occupancy_status),  # occupancy_status
         getenum(model.CongestionLevel, vp.congestion_level, 0),  # congestion_level
         fromtimestamp(vp.timestamp),  # timestamp
-    )
+    ]
 
 
-def insert_vehicles(cursor, entities):
-    cols = (
+def insert_vehicles(cursor, messageid, entities):
+    cols = [
+        'mid',
         'trip_id',
         'route_id',
         'trip_start_time',
         'trip_start_date',
         'stop_id',
+        'stop_sequence',
         'stop_status',
         'vehicle_id',
         'vehicle_label',
@@ -141,22 +158,26 @@ def insert_vehicles(cursor, entities):
         'occupancy_status',
         'congestion_level',
         'timestamp',
-    )
+    ]
 
-    sql = insert_stmt('rt_vehicle_positions', cols)
-    execute_values(cursor, sql, [parse_vehicle(e) for e in entities])
+    sql = insert_stmt('rt.vehicle_positions', cols)
+    parsed = ([messageid] + parse_vehicle(e) for e in entities if e.vehicle.ByteSize())
+    execute_values(cursor, sql, list(parsed))
 
 
-def parse_alert(entity):
-    return (
-        fromtimestamp(entity.alert.active_period[0].start),  # start
-        fromtimestamp(entity.alert.active_period[0].end),  # end
-        getenum(model.AlertCause, entity.alert.cause),  # cause
-        getenum(model.AlertEffect, entity.alert.effect),  # effect
-        get_translated(entity.alert.url.translation),  # url
-        get_translated(entity.alert.header_text.translation),  # header_text
-        get_translated(entity.alert.description_text.translation),  # description_text
-    )
+def parse_alert(alert):
+    try:
+        return [
+            fromtimestamp(alert.active_period[0].start),  # start
+            fromtimestamp(alert.active_period[0].end),  # end
+            getenum(model.AlertCause, alert.cause),  # cause
+            getenum(model.AlertEffect, alert.effect),  # effect
+            get_translated(alert.url.translation),  # url
+            get_translated(alert.header_text.translation),  # header_text
+            get_translated(alert.description_text.translation),  # description_text
+        ]
+    except IndexError:
+        return []
 
 
 def parse_informed_entity(entity):
@@ -172,8 +193,9 @@ def parse_informed_entity(entity):
     )
 
 
-def insert_alerts(cursor, entities):
+def insert_alerts(cursor, messageid, entities):
     alert_cols = (
+        'mid',
         'start',
         '"end"',
         'cause',
@@ -191,31 +213,44 @@ def insert_alerts(cursor, entities):
         'trip_route_id',
         'trip_start_time',
         'trip_start_date',
+        'alert_id'
     )
-    sql = insert_stmt('rt_alerts', alert_cols)
-    execute_values(cursor, sql, [parse_alert(e) for e in entities])
 
-    sql = insert_stmt('rt_entity_selectors', entity_cols)
-    for entity in entities:
-        execute_values(cursor, sql, [parse_informed_entity(ie) for ie in entity.alert.informed_entity])
+    alerts = [e.alert for e in entities if e.alert.ByteSize()]
+    if not alerts:
+        return
+
+    alertsql = insert_stmt_returning('rt.alerts', alert_cols, 'oid')
+    selectorsql = insert_stmt('rt.entity_selectors', entity_cols)
+
+    for alert in alerts:
+        parsed = parse_alert(alert)
+        if not parsed:
+            continue
+        cursor.execute(alertsql, [messageid] + parsed)
+        oid = cursor.fetchone()[0]
+
+        selectors = [parse_informed_entity(e) + [oid] for e in alert.informed_entity]
+        if selectors:
+            execute_values(cursor, selectorsql, selectors)
 
 
-def parse_trip(entity):
-    return (
-        entity.trip_update.trip.trip_id,  # trip_id
-        entity.trip_update.trip.route_id,  # route_id
-        entity.trip_update.trip.start_time or None,  # trip_start_time
-        entity.trip_update.trip.start_date or None,  # trip_start_date
-        getenum(model.TripSchedule, entity.trip_update.trip.schedule_relationship),  # schedule_relationship
-        entity.trip_update.vehicle.id,  # vehicle_id
-        entity.trip_update.vehicle.label,  # vehicle_label
-        entity.trip_update.vehicle.license_plate,  # vehicle_license_plate
-        fromtimestamp(entity.trip_update.timestamp)  # timestamp
-    )
+def parse_trip(trip_update):
+    return [
+        trip_update.trip.trip_id,  # trip_id
+        trip_update.trip.route_id,  # route_id
+        trip_update.trip.start_time or None,  # trip_start_time
+        trip_update.trip.start_date or None,  # trip_start_date
+        getenum(model.TripSchedule, trip_update.trip.schedule_relationship),  # schedule_relationship
+        trip_update.vehicle.id,  # vehicle_id
+        trip_update.vehicle.label,  # vehicle_label
+        trip_update.vehicle.license_plate,  # vehicle_license_plate
+        fromtimestamp(trip_update.timestamp)  # timestamp
+    ]
 
 
 def parse_stoptimeupdate(entity):
-    return (
+    return [
         entity.stop_sequence,  # stop_sequence
         entity.stop_id,  # stop_id
         entity.arrival.delay or None,  # arrival_delay
@@ -225,11 +260,12 @@ def parse_stoptimeupdate(entity):
         fromtimestamp(entity.departure.time),  # departure_time
         entity.departure.uncertainty or None,  # departure_uncertainty
         getenum(model.StopTimeSchedule, entity.schedule_relationship, 2),  # schedule_relationship
-    )
+    ]
 
 
-def insert_trips(cursor, entities):
+def insert_trips(cursor, messageid, entities):
     cols = (
+        'mid',
         'trip_id',
         'route_id',
         'trip_start_time',
@@ -250,14 +286,43 @@ def insert_trips(cursor, entities):
         'departure_time',
         'departure_uncertainty',
         'schedule_relationship',
+        'trip_update_id'
     )
-    sql = insert_stmt('rt_trip_updates', cols)
-    execute_values(cursor, sql, [parse_trip(e) for e in entities])
+    trips = [e.trip_update for e in entities if e.trip_update.ByteSize()]
+    if not trips:
+        return
 
-    sql = insert_stmt('rt_stop_time_updates', stu_cols)
-    for entity in entities:
-        execute_values(cursor, sql, [parse_stoptimeupdate(e) for e in entity.trip_update.stop_time_update])
+    tripsql = insert_stmt_returning('rt.trip_updates', cols, 'oid')
+    sql = insert_stmt('rt.stop_time_updates', stu_cols)
 
+    for trip in trips:
+        cursor.execute(tripsql, [messageid] + parse_trip(trip))
+        oid = cursor.fetchone()[0]
+
+        stus = [parse_stoptimeupdate(stu) + [oid] for stu in trip.stop_time_update]
+        if stus:
+            execute_values(cursor, sql, stus)
+
+
+def parse_replacement_period(entity):
+    return [entity.route_id, fromtimestamp(entity.replacement_period.end)]
+
+
+def insert_header(cursor, message):
+    sql = insert_stmt_returning('rt.messages', ['"timestamp"'], 'oid')
+    execute_values(cursor, sql, [(fromtimestamp(message.header.timestamp),)])
+    messageid = cursor.fetchone()[0]
+    nyct_feed_header = message.header.Extensions[nyct_subway_pb2.nyct_feed_header]
+    replacement_periods = [parse_replacement_period(e) + [messageid]
+                           for e in nyct_feed_header.trip_replacement_period]
+    sql = insert_stmt('rt.replacement_periods', ['route_id', '"end"', 'mid'])
+    execute_values(cursor, sql, replacement_periods)
+
+    return messageid
+
+def insert_error(cursor, filename, error):
+    sql = insert_stmt("rt.failures", ('filename', 'error'))
+    execute_values(cursor, sql, [[filename, error]])
 
 def connection_params():
     pg = {
@@ -274,44 +339,43 @@ def connection_params():
 
 def main():
     desc = """
-        Scrape GTFS-rt positions into a PostgreSQL database.
+        Insert GTFS-rt data into a PostgreSQL database.
         By default, a local connection to your user's database will be created.
         To specify other connection parameters, use the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
-    parser.add_argument('-t', '--trip-updates', dest='trips',
-                        help='The trip updates URL', metavar='URL')
-    parser.add_argument('-a', '--alerts', default=None, metavar='URL',
-                        help='The alerts URL')
-    parser.add_argument('-p', '--vehicle-positions', dest='vehicles',
-                        help='The vehicle positions URL', metavar='URL')
-
+    parser.add_argument('file', help='GTFS-RT file', metavar='gtfs-rt-file')
     args = parser.parse_args()
 
     level = logging.WARNING
     # Start logging.
     start_logger(level)
 
+    inserters = (
+        insert_alerts,
+        insert_trips,
+        insert_vehicles,
+    )
     try:
         with psycopg2.connect(**connection_params()) as conn:
-            urls = (args.alerts, args.trips, args.vehicles)
-            inserters = (insert_alerts, insert_trips, insert_vehicles)
+            with conn.cursor() as cursor:
+                logging.debug('Opening %s', args.file)
+                message, error = load_message(args.file)
 
-            if urls == (None, None, None):
-                logging.error('No trip updates, alerts, or vehicle positions URLs were specified')
-                return
+                if error or not message.ByteSize():
+                    errormessage = getattr(error, 'message', 'ByteSize is 0')
+                    insert_error(cursor, args.file, errormessage)
+                    return
 
-        with conn.cursor() as cursor:
-            for url, insert in zip(urls, inserters):
-                if url is not None:
-                    logging.debug('Getting %s', url)
-                    entities = load_entity(url)
-                    insert(cursor, entities)
+                # first insert the header
+                messageid = insert_header(cursor, message)
+
+                for insert in inserters:
+                    insert(cursor, messageid, message.entity)
                     conn.commit()
 
     except psycopg2.ProgrammingError as e:
-        logging.error("database error:")
-        logging.error(str(e).strip())
+        logging.error("database error: %s", str(e).strip())
         sys.exit(1)
 
 
