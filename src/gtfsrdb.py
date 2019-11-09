@@ -30,6 +30,7 @@ import logging
 import pytz
 import psycopg2
 from psycopg2.extras import execute_values
+import requests
 import google.protobuf
 import nyct_subway_pb2
 import gtfs_realtime_pb2
@@ -95,21 +96,19 @@ def getenum(cls, value, default=None):
         return None
 
 
-def load_message(filename):
+def load_message(url):
     fm = gtfs_realtime_pb2.FeedMessage()
-
-    with open(filename, 'rb') as f:
+    with requests.get(url) as r:
         try:
-            fm.ParseFromString(f.read())
+            fm.ParseFromString(r.content)
         except (RuntimeWarning, google.protobuf.message.DecodeError) as e:
-            logging.error('ERROR: %s in %s', e, filename)
+            logging.error('ERROR: %s in %s', e, url)
             return fm, e
-
     # Check the feed version
     if fm.entity and fm.header.gtfs_realtime_version != '1.0':
         logging.warning('WARNING: feed version has changed. Expected 1.0, found %s',
                         fm.header.gtfs_realtime_version)
-        logging.warning('file: %s', filename)
+        logging.warning('file: %s', url)
 
     return fm, None
 
@@ -320,9 +319,11 @@ def insert_header(cursor, message):
 
     return messageid
 
+
 def insert_error(cursor, filename, error):
     sql = insert_stmt("rt.failures", ('filename', 'error'))
     execute_values(cursor, sql, [[filename, error]])
+
 
 def connection_params():
     pg = {
@@ -344,7 +345,7 @@ def main():
         To specify other connection parameters, use the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
-    parser.add_argument('file', help='GTFS-RT file', metavar='gtfs-rt-file')
+    parser.add_argument('url', help='GTFS-RT APi endpoint')
     args = parser.parse_args()
 
     level = logging.WARNING
@@ -360,7 +361,7 @@ def main():
         with psycopg2.connect(**connection_params()) as conn:
             with conn.cursor() as cursor:
                 logging.debug('Opening %s', args.file)
-                message, error = load_message(args.file)
+                message, error = load_message(args.url)
 
                 if error or not message.ByteSize():
                     errormessage = getattr(error, 'message', 'ByteSize is 0')
