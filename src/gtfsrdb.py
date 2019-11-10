@@ -350,7 +350,7 @@ def main():
     args = dict(action='store_const', dest='type',)
     group.add_argument('-t', '--trip-updates', const='t', help='Fetch trip updates', **args)
     group.add_argument('-a', '--alerts', const='a', help='Fetch alerts', **args)
-    group.add_argument('-p', '--vehicle-position', const='p', help='Fetch vehicle positions', **args)
+    group.add_argument('-p', '--vehicle-positions', const='p', help='Fetch vehicle positions', **args)
 
     parser.add_argument('url', help='GTFS-RT API endpoint')
 
