@@ -13,8 +13,6 @@ DATE = 2001-01-01
 YEAR = $(shell echo $(DATE) | sed 's/\(.\{4\}\)-.*/\1/')
 MONTH =	$(shell echo $(DATE) | sed 's/.\{4\}-\(.\{2\}\)-.*/\1/')
 
-PB2 = src/gtfs_realtime_pb2.py
-
 alerts 		= http://gtfsrt.prod.obanyc.com/alerts
 positions 	= http://gtfsrt.prod.obanyc.com/vehiclePositions
 tripupdates = http://gtfsrt.prod.obanyc.com/tripUpdates
@@ -34,11 +32,14 @@ all:
 
 # Scrape GTFS-rt data.
 
-alerts:; $(GTFSRDB) --alerts $(alerts)?key=$(BUSTIME_API_KEY)
+alerts: src/gtfs_realtime_pb2.py
+	$(GTFSRDB) --alerts $(alerts)?key=$(BUSTIME_API_KEY)
 
-positions:; $(GTFSRDB) --vehicle-positions $(positions)?key=$(BUSTIME_API_KEY)
+positions: src/gtfs_realtime_pb2.py
+	$(GTFSRDB) --vehicle-positions $(positions)?key=$(BUSTIME_API_KEY)
 
-tripupdates:; $(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
+tripupdates: src/gtfs_realtime_pb2.py
+	$(GTFSRDB) --trip-updates $(tripupdates)?key=$(BUSTIME_API_KEY)
 
 ifeq ($(MODE),upload)
 
@@ -146,5 +147,5 @@ install: requirements.txt
 	$(PYTHON) -m pip > /dev/null || curl https://bootstrap.pypa.io/get-pip.py | sudo $(PYTHON)
 	$(PYTHON) -m pip install --upgrade --requirement $<
 
-$(PB2): src/%_realtime_pb2.py: src/%-realtime.proto
+src/gtfs_realtime_pb2.py: src/gtfs-realtime.proto
 	protoc $< -I$(<D) --python_out=$(@D)
