@@ -53,8 +53,13 @@ CREATE TYPE rt.tripschedule AS ENUM (
     'UNSCHEDULED',
     'CANCELED'
 );
+CREATE TABLE rt.messages (
+    oid serial PRIMARY KEY,
+    timestamp timestamp with time zone NOT NULL
+);
 CREATE TABLE rt.alerts (
     oid serial PRIMARY KEY,
+    mid bigint references rt.messages (oid),
     start timestamp with time zone,
     "end" timestamp with time zone,
     cause alertcause,
@@ -73,10 +78,11 @@ CREATE TABLE rt.entity_selectors (
     trip_route_id text,
     trip_start_time interval,
     trip_start_date date,
-    alert_id integer REFERENCES rt_alerts(oid)
+    alert_id integer REFERENCES rt.alerts(oid)
 );
 CREATE TABLE rt.trip_updates (
     oid serial PRIMARY KEY,
+    mid bigint references rt.messages (oid),
     trip_id text,
     route_id text,
     trip_start_time interval,
@@ -98,12 +104,13 @@ CREATE TABLE rt.stop_time_updates (
     departure_time timestamp with time zone,
     departure_uncertainty integer,
     schedule_relationship stoptimeschedule,
-    trip_update_id integer REFERENCES rt_trip_updates(oid)
+    trip_update_id integer REFERENCES rt.trip_updates(oid)
 );
 CREATE TABLE rt.vehicle_positions (
     "timestamp" timestamp with time zone NOT NULL,
     trip_id text,
     route_id text,
+    mid bigint references rt.messages (oid),
     trip_start_time interval,
     trip_start_date date,
     vehicle_id text NOT NULL,
@@ -114,6 +121,7 @@ CREATE TABLE rt.vehicle_positions (
     bearing numeric(5,2),
     speed numeric(4,2),
     stop_id text,
+    stop_sequence int,
     stop_status stopstatus,
     occupancy_status occupancystatus,
     congestion_level congestionlevel,
