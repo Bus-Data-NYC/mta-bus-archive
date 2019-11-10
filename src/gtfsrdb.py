@@ -32,8 +32,8 @@ import psycopg2
 from psycopg2.extras import execute_values
 import requests
 import google.protobuf
-import nyct_subway_pb2
 import gtfs_realtime_pb2
+# import nyct_subway_pb2
 import model
 
 
@@ -115,7 +115,7 @@ def load_message(url):
 
 def parse_vehicle(entity):
     vp = entity.vehicle
-    nyct_trip_descriptor = vp.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor]
+    # nyct_trip_descriptor = vp.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor]
     return [
         vp.trip.trip_id or None,  # trip_id
         vp.trip.route_id or None,  # route_id
@@ -124,7 +124,8 @@ def parse_vehicle(entity):
         vp.stop_id or None,  # stop_id
         vp.current_stop_sequence or None,  # stop_sequence
         getenum(model.StopStatus, vp.current_status) or None,  # stop_status
-        vp.vehicle.id or nyct_trip_descriptor.train_id or None,  # vehicle_id
+        # vp.vehicle.id or nyct_trip_descriptor.train_id or None,  # vehicle_id
+        vp.vehicle.id or None,  # vehicle_id
         vp.vehicle.label or None,  # vehicle_label
         vp.vehicle.license_plate or None,  # vehicle_license_plate
         vp.position.latitude or None,  # latitude
@@ -229,7 +230,7 @@ def insert_alerts(cursor, messageid, entities):
         cursor.execute(alertsql, [messageid] + parsed)
         oid = cursor.fetchone()[0]
 
-        selectors = [parse_informed_entity(e) + [oid] for e in alert.informed_entity]
+        selectors = [parse_informed_entity(e) + (oid,) for e in alert.informed_entity]
         if selectors:
             execute_values(cursor, selectorsql, selectors)
 
@@ -311,11 +312,11 @@ def insert_header(cursor, message):
     sql = insert_stmt_returning('rt.messages', ['"timestamp"'], 'oid')
     execute_values(cursor, sql, [(fromtimestamp(message.header.timestamp),)])
     messageid = cursor.fetchone()[0]
-    nyct_feed_header = message.header.Extensions[nyct_subway_pb2.nyct_feed_header]
-    replacement_periods = [parse_replacement_period(e) + [messageid]
-                           for e in nyct_feed_header.trip_replacement_period]
-    sql = insert_stmt('rt.replacement_periods', ['route_id', '"end"', 'mid'])
-    execute_values(cursor, sql, replacement_periods)
+    # nyct_feed_header = message.header.Extensions[nyct_subway_pb2.nyct_feed_header]
+    # replacement_periods = [parse_replacement_period(e) + [messageid]
+    #                        for e in nyct_feed_header.trip_replacement_period]
+    # sql = insert_stmt('rt.replacement_periods', ['route_id', '"end"', 'mid'])
+    # execute_values(cursor, sql, replacement_periods)
 
     return messageid
 
@@ -345,12 +346,17 @@ def main():
         To specify other connection parameters, use the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
-    parser.add_argument('url', help='GTFS-RT APi endpoint')
+    group = parser.add_mutually_exclusive_group(required=True)
+    args = dict(action='store_const', dest='type',)
+    group.add_argument('-t', '--trip-updates', const='t', help='Fetch trip updates', **args)
+    group.add_argument('-a', '--alerts', const='a', help='Fetch alerts', **args)
+    group.add_argument('-p', '--vehicle-position', const='p', help='Fetch vehicle positions', **args)
+
+    parser.add_argument('url', help='GTFS-RT API endpoint')
+
     args = parser.parse_args()
 
-    level = logging.WARNING
-    # Start logging.
-    start_logger(level)
+    start_logger(logging.WARNING)
 
     inserters = (
         insert_alerts,
@@ -360,12 +366,12 @@ def main():
     try:
         with psycopg2.connect(**connection_params()) as conn:
             with conn.cursor() as cursor:
-                logging.debug('Opening %s', args.file)
+                logging.debug('Opening %s', args.url)
                 message, error = load_message(args.url)
 
                 if error or not message.ByteSize():
                     errormessage = getattr(error, 'message', 'ByteSize is 0')
-                    insert_error(cursor, args.file, errormessage)
+                    insert_error(cursor, args.url, errormessage)
                     return
 
                 # first insert the header
