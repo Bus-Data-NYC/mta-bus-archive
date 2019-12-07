@@ -48,7 +48,9 @@ ifeq ($(MODE),upload)
 gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-s3: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
+s3: s3-positions s3-stoptime-updates s3-trip-updates
+
+s3-%: $(YEAR)/$(MONTH)/$(DATE)-bus-%.csv.xz
 	aws s3 cp --quiet --acl public-read $< s3://$(S3BUCKET)/$<
 
 $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
@@ -57,9 +59,24 @@ $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
+$(YEAR)/$(MONTH)/$(DATE)-bus-stoptime-updates.csv.xz: | $(YEAR)/$(MONTH)
+	$(PSQL) -c "COPY (\
+		SELECT a.* FROM rt.stop_time_updates a \
+		  LEFT JOIN rt.trip_updates b ON (trip_update_id=b.oid) \
+		  WHERE b.timestamp::date = '$(DATE)'::date \
+		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
+	xz -z - > $@
+
+$(YEAR)/$(MONTH)/$(DATE)-bus-trip-updates.csv.xz: | $(YEAR)/$(MONTH)
+	$(PSQL) -c "COPY (\
+		SELECT * FROM rt.trip_updates WHERE timestamp::date = '$(DATE)'::date \
+		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
+	xz -z - > $@
+
 clean-date:
 	$(PSQL) -c "DELETE FROM rt.vehicle_positions where timestamp::date = '$(DATE)'::date"
-	rm -f $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv{.xz,}
+	$(PSQL) -c "DELETE FROM rt.trip_updates where timestamp::date = '$(DATE)'::date CASCADE"
+	rm -f $(YEAR)/$(MONTH)/$(DATE)-bus-*.csv{.xz,}
 
 else
 
@@ -96,9 +113,15 @@ endif
 
 psql: psql-$(DATE)
 
-psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv.xz
+psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv.xz $(YEAR)/$(MONTH)/%-bus-stoptime-updates.csv.xz $(YEAR)/$(MONTH)/%-bus-trip-updates.csv.xz
 	xz --decompress --stdout $< \
 	| $(PSQL) -c "COPY rt.vehicle_positions ($(ARCHIVE_COLS)) \
+		FROM STDIN (FORMAT CSV, HEADER true)"
+	xz --decompress --stdout $(YEAR)/$(MONTH)/$*-bus-trip-updates.csv.xz \
+	| $(PSQL) -c "COPY rt.trip_updates ($(TRIP_COLS)) \
+		FROM STDIN (FORMAT CSV, HEADER true)"
+	xz --decompress --stdout $(YEAR)/$(MONTH)/$*-bus-stoptime-updates.csv.xz \
+	| $(PSQL) -c "COPY rt.stop_time_updates ($(STOPTIME_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)"
 
 mysql: mysql-$(DATE)
