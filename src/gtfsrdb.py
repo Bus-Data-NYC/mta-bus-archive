@@ -354,11 +354,11 @@ def main():
         To specify other connection parameters, use the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
-    parser.add_argument('-t', '--trip-updates', help='Fetch trip updates', action='store_const')
-    parser.add_argument('-t', '--stoptime-updates', help='Fetch stop time updates', action='store_const')
-    parser.add_argument('-a', '--alerts', help='Fetch alerts', action='store_const')
-    parser.add_argument('-p', '--vehicle-positions', help='Fetch vehicle positions', action='store_const')
-    parser.add_argument('url', help='GTFS-RT API endpoint', required=True)
+    parser.add_argument('--trip-updates', help='Fetch trip updates', action='store_true')
+    parser.add_argument('--stoptime-updates', help='Fetch stop time updates', action='store_true')
+    parser.add_argument('--alerts', help='Fetch alerts', action='store_true')
+    parser.add_argument('--vehicle-positions', help='Fetch vehicle positions', action='store_true')
+    parser.add_argument('url', help='GTFS-RT API endpoint')
 
     args = parser.parse_args()
 
