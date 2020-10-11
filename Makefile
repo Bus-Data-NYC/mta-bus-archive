@@ -48,7 +48,7 @@ ifeq ($(MODE),upload)
 gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	gsutil cp -rna public-read $< gs://$(GOOGLE_BUCKET)/$<
 
-s3: s3-positions s3-alerts s3-trip-updates
+s3: s3-positions s3-alerts s3-trip-updates s3-messages
 
 s3-%: $(YEAR)/$(MONTH)/$(DATE)-bus-%.csv.xz
 	aws s3 cp --quiet --acl public-read $< s3://$(S3BUCKET)/$<
@@ -59,16 +59,22 @@ $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
-$(YEAR)/$(MONTH)/$(DATE)-alerts.csv.xz: | $(YEAR)/$(MONTH)
+$(YEAR)/$(MONTH)/$(DATE)-bus-alerts.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
 		SELECT * FROM rt.alerts a \
 		  WHERE a.start::date = '$(DATE)'::date \
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
-$(YEAR)/$(MONTH)/$(DATE)-trip-updates.csv.xz: | $(YEAR)/$(MONTH)
+$(YEAR)/$(MONTH)/$(DATE)-bus-trip-updates.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
 		SELECT * FROM rt.trip_updates WHERE timestamp::date = '$(DATE)'::date \
+		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
+	xz -z - > $@
+
+$(YEAR)/$(MONTH)/$(DATE)-bus-messages.csv.xz: | $(YEAR)/$(MONTH)
+	$(PSQL) -c "COPY (\
+		SELECT * FROM rt.mesages WHERE timestamp::date = '$(DATE)'::date \
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
@@ -76,6 +82,7 @@ clean-date:
 	$(PSQL) -c "DELETE FROM rt.vehicle_positions where timestamp::date = '$(DATE)'::date"
 	$(PSQL) -c "DELETE FROM rt.alerts WHERE start::date = '$(DATE)'::date"
 	$(PSQL) -c "DELETE FROM rt.trip_updates where timestamp::date = '$(DATE)'::date"
+	$(PSQL) -c "DELETE FROM rt.messages where timestamp::date = '$(DATE)'::date"
 	rm -f $(YEAR)/$(MONTH)/$(DATE)-bus-*.csv{.xz,}
 
 else
