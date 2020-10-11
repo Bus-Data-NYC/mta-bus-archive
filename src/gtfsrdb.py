@@ -276,6 +276,17 @@ def insert_trips(cursor, messageid, entities):
         'vehicle_license_plate',
         'timestamp',
     )
+    trips = [e.trip_update for e in entities if e.trip_update.ByteSize()]
+    if not trips:
+        return
+
+    tripsql = insert_stmt_returning('rt.trip_updates', cols, 'oid')
+
+    for trip in trips:
+        cursor.execute(tripsql, [messageid] + parse_trip(trip))
+
+
+def insert_stoptime_updates(cursor, messageid, entities):
     stu_cols = (
         'stop_sequence',
         'stop_id',
@@ -292,14 +303,11 @@ def insert_trips(cursor, messageid, entities):
     if not trips:
         return
 
-    tripsql = insert_stmt_returning('rt.trip_updates', cols, 'oid')
     sql = insert_stmt('rt.stop_time_updates', stu_cols)
 
     for trip in trips:
-        cursor.execute(tripsql, [messageid] + parse_trip(trip))
-        oid = cursor.fetchone()[0]
-
-        stus = [parse_stoptimeupdate(stu) + [oid] for stu in trip.stop_time_update]
+        trip_id = parse_trip(trip)[0]
+        stus = [parse_stoptimeupdate(stu) + [trip_id] for stu in trip.stop_time_update]
         if stus:
             execute_values(cursor, sql, stus)
 
@@ -346,23 +354,22 @@ def main():
         To specify other connection parameters, use the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
-    group = parser.add_mutually_exclusive_group(required=True)
-    args = dict(action='store_const', dest='type',)
-    group.add_argument('-t', '--trip-updates', const='t', help='Fetch trip updates', **args)
-    group.add_argument('-a', '--alerts', const='a', help='Fetch alerts', **args)
-    group.add_argument('-p', '--vehicle-positions', const='p', help='Fetch vehicle positions', **args)
-
-    parser.add_argument('url', help='GTFS-RT API endpoint')
+    parser.add_argument('-t', '--trip-updates', help='Fetch trip updates', action='store_const')
+    parser.add_argument('-t', '--stoptime-updates', help='Fetch stop time updates', action='store_const')
+    parser.add_argument('-a', '--alerts', help='Fetch alerts', action='store_const')
+    parser.add_argument('-p', '--vehicle-positions', help='Fetch vehicle positions', action='store_const')
+    parser.add_argument('url', help='GTFS-RT API endpoint', required=True)
 
     args = parser.parse_args()
 
     start_logger(logging.WARNING)
 
-    inserters = (
-        insert_alerts,
-        insert_trips,
-        insert_vehicles,
-    )
+    inserts = {
+        "alerts": insert_alerts,
+        "trip_updates": insert_trips,
+        "vehicle_positions": insert_vehicles,
+        "stoptime_updates": insert_stoptime_updates,
+    }
     try:
         with psycopg2.connect(**connection_params()) as conn:
             with conn.cursor() as cursor:
@@ -377,12 +384,13 @@ def main():
                 # first insert the header
                 messageid = insert_header(cursor, message)
 
-                for insert in inserters:
-                    insert(cursor, messageid, message.entity)
-                    conn.commit()
+                for key, insert in inserts.items():
+                    if getattr(args, key):
+                        insert(cursor, messageid, message.entity)
+                        conn.commit()
 
-    except psycopg2.ProgrammingError as e:
-        logging.error("database error: %s", str(e).strip())
+    except psycopg2.ProgrammingError as err:
+        logging.error("database error: %s", str(err).strip())
         sys.exit(1)
 
 

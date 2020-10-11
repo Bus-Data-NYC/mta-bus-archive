@@ -104,7 +104,7 @@ CREATE TABLE rt.stop_time_updates (
     departure_time timestamp with time zone,
     departure_uncertainty integer,
     schedule_relationship stoptimeschedule,
-    trip_update_id integer REFERENCES rt.trip_updates(oid)
+    trip_id text
 );
 CREATE TABLE rt.vehicle_positions (
     "timestamp" timestamp with time zone NOT NULL,
