@@ -18,3 +18,9 @@ GOOGLE_APPLICATION_CREDENTIALS=$HOME/mta-bus-archive/client_secret.json
 5   6 * * * make -C $HOME/mta-bus-archive gcloud clean-date MODE=upload DATE=$(date +\%Y-\%m-\%d -d yesterday)
 # */3 * * * * make -C $HOME/mta-bus-archive tripupdates
 # */3 * * * * make -C $HOME/mta-bus-archive alerts
+# force delete old rows in database and CSVs
+  1 1 * * * psql -c "delete from rt.vehicle_positions p where p.timestamp < now()-interval '1 month'"
+  1 2 * * * psql -c "delete from rt.trip_updates t where t.timestamp < now()-interval '1 month'"
+  1 3 * * * psql -c "delete from rt.messages m where m.timestamp < now() - interval '1 month'"
+  1 4 * * * psql -c "delete from rt.alerts a where a.start < now() - interval '1 month'"
+  1 2 * * * find $HOME/mta-bus-archive/csv -type f -mtime +30 -delete
