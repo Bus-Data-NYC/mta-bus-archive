@@ -74,7 +74,7 @@ $(YEAR)/$(MONTH)/$(DATE)-bus-trip-updates.csv.xz: | $(YEAR)/$(MONTH)
 
 $(YEAR)/$(MONTH)/$(DATE)-bus-messages.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
-		SELECT * FROM rt.mesages WHERE timestamp::date = '$(DATE)'::date \
+		SELECT * FROM rt.messages WHERE timestamp::date = '$(DATE)'::date \
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
