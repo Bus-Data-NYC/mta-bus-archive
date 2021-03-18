@@ -59,7 +59,7 @@ CREATE TABLE rt.messages (
 );
 CREATE TABLE rt.alerts (
     oid serial PRIMARY KEY,
-    mid bigint references rt.messages (oid),
+    mid bigint REFERENCES rt.messages (oid) ON DELETE CASCADE,
     start timestamp with time zone,
     "end" timestamp with time zone,
     cause alertcause,
@@ -78,11 +78,11 @@ CREATE TABLE rt.entity_selectors (
     trip_route_id text,
     trip_start_time interval,
     trip_start_date date,
-    alert_id integer REFERENCES rt.alerts(oid)
+    alert_id integer REFERENCES rt.alerts(oid) ON DELETE CASCADE
 );
 CREATE TABLE rt.trip_updates (
     oid serial PRIMARY KEY,
-    mid bigint references rt.messages (oid),
+    mid bigint REFERENCES rt.messages (oid) ON DELETE CASCADE,
     trip_id text,
     route_id text,
     trip_start_time interval,
@@ -110,7 +110,7 @@ CREATE TABLE rt.vehicle_positions (
     "timestamp" timestamp with time zone NOT NULL,
     trip_id text,
     route_id text,
-    mid bigint references rt.messages (oid),
+    mid bigint REFERENCES rt.messages (oid) ON DELETE CASCADE,
     trip_start_time interval,
     trip_start_date date,
     vehicle_id text NOT NULL,

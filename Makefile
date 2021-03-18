@@ -51,9 +51,9 @@ gcloud: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 s3: s3-positions s3-alerts s3-trip-updates s3-messages
 
 s3-%: $(YEAR)/$(MONTH)/$(DATE)-bus-%.csv.xz
-	aws s3 cp --quiet --acl public-read $< s3://$(S3BUCKET)/$<
+	aws s3 mv --quiet --acl public-read $< s3://$(S3BUCKET)/$<
 
-xz: $(foreach x,bus-positions bus-alerts bus-trip-updates bus-messages,$(YEAR)/$(MONTH)/$(DATE)-$(x).csv.xz) ## Save csv.xz files for all tables
+xz: $(foreach x,positions alerts trip-updates messages entity-selectors,$(YEAR)/$(MONTH)/$(DATE)-bus-$(x).csv.xz) ## Save csv.xz files for all tables
 
 $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
@@ -79,11 +79,20 @@ $(YEAR)/$(MONTH)/$(DATE)-bus-messages.csv.xz: | $(YEAR)/$(MONTH)
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
+$(YEAR)/$(MONTH)/$(DATE)-bus-entity-selectors.csv.xz: | $(YEAR)/$(MONTH)
+	$(PSQL) -c "COPY (\
+		SELECT * FROM rt.entity_selectors e JOIN rt.alerts AS a ON (e.alert_id = a.oid) \
+		WHERE a.start::date = '$(DATE)'::date \
+		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
+	xz -z - > $@
+
 clean-date:
 	$(PSQL) -c "DELETE FROM rt.vehicle_positions where timestamp::date = '$(DATE)'::date"
 	$(PSQL) -c "DELETE FROM rt.alerts WHERE start::date = '$(DATE)'::date"
 	$(PSQL) -c "DELETE FROM rt.trip_updates where timestamp::date = '$(DATE)'::date"
 	$(PSQL) -c "DELETE FROM rt.messages where timestamp::date = '$(DATE)'::date"
+	$(PSQL) -c "DELETE FROM ONLY rt.entity_selectors e USING rt.alerts a \
+		WHERE e.alert_id = a.oid AND a.start::date = '$(DATE)'::date"
 	rm -f $(YEAR)/$(MONTH)/$(DATE)-bus-*.csv{.xz,}
 
 else
