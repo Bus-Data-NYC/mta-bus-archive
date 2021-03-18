@@ -53,6 +53,8 @@ s3: s3-positions s3-alerts s3-trip-updates s3-messages
 s3-%: $(YEAR)/$(MONTH)/$(DATE)-bus-%.csv.xz
 	aws s3 cp --quiet --acl public-read $< s3://$(S3BUCKET)/$<
 
+xz: $(foreach x,bus-positions bus-alerts bus-trip-updates bus-messages,$(YEAR)/$(MONTH)/$(DATE)-$(x).csv.xz) ## Save csv.xz files for all tables
+
 $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
 		SELECT * FROM rt.vehicle_positions WHERE timestamp::date = '$(DATE)'::date \
@@ -61,8 +63,7 @@ $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz: | $(YEAR)/$(MONTH)
 
 $(YEAR)/$(MONTH)/$(DATE)-bus-alerts.csv.xz: | $(YEAR)/$(MONTH)
 	$(PSQL) -c "COPY (\
-		SELECT * FROM rt.alerts a \
-		  WHERE a.start::date = '$(DATE)'::date \
+		SELECT * FROM rt.alerts a WHERE a.start::date = '$(DATE)'::date \
 		) TO STDOUT WITH (FORMAT CSV, HEADER true)" | \
 	xz -z - > $@
 
