@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: apt-get install postgresql
+        run: sudo apt-get install postgresql
 
       - run: make init
 
