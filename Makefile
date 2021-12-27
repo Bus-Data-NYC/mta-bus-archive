@@ -2,10 +2,8 @@ shell = bash
 
 PYTHON = python
 
-PGUSER ?= $(USER)
-PGDATABASE ?= $(PGUSER)
-PSQLFLAGS = $(PGDATABASE)
-PSQL = psql $(PSQLFLAGS)
+export PGDATABASE PGUSER
+PSQL = psql $(psqlflags)
 
 export PGDATABASE PGUSER
 
@@ -26,7 +24,8 @@ ARCHIVE ?= s3
 
 .PHONY: all psql psql-% mysql mysql-% \
 	init install clean-date \
-	positions alerts tripupdates gcloud
+	positions alerts tripupdates gcloud \
+	psql psql-$(DATE) psql-bus-positions psql-stoptime-updates psql-trip-updates
 
 all:
 
@@ -99,7 +98,7 @@ else
 
 # Download past data
 
-ARCHIVE_COLS = timestamp,trip_id, \
+ARCHIVE_COLS ?= timestamp,trip_id, \
 	route_id,trip_start_time,trip_start_date, \
 	vehicle_id,vehicle_label,vehicle_license_plate,	\
 	latitude,longitude,bearing,speed,stop_id, \
@@ -130,13 +129,19 @@ endif
 
 psql: psql-$(DATE)
 
-psql-%: $(YEAR)/$(MONTH)/%-bus-positions.csv.xz $(YEAR)/$(MONTH)/%-bus-stoptime-updates.csv.xz $(YEAR)/$(MONTH)/%-bus-trip-updates.csv.xz
+psql-$(DATE): psql-bus-positions psql-stoptime-updates psql-trip-updates
+
+psql-bus-positions: $(YEAR)/$(MONTH)/$(DATE)-bus-positions.csv.xz
 	xz --decompress --stdout $< \
 	| $(PSQL) -c "COPY rt.vehicle_positions ($(ARCHIVE_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)"
+
+psql-stoptime-updates: $(YEAR)/$(MONTH)/$(DATE)-bus-stoptime-updates.csv.xz
 	xz --decompress --stdout $(YEAR)/$(MONTH)/$*-bus-trip-updates.csv.xz \
 	| $(PSQL) -c "COPY rt.trip_updates ($(TRIP_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)"
+
+psql-trip-updates: $(YEAR)/$(MONTH)/$(DATE)-bus-trip-updates.csv.xz
 	xz --decompress --stdout $(YEAR)/$(MONTH)/$*-bus-stoptime-updates.csv.xz \
 	| $(PSQL) -c "COPY rt.stop_time_updates ($(STOPTIME_COLS)) \
 		FROM STDIN (FORMAT CSV, HEADER true)"
