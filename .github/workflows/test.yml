@@ -1,0 +1,58 @@
+name: test
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgis/postgis:10-2.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+          PGUSER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          --health-start-period 2s
+    env:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: password
+      PGDATABASE: postgres
+      PGPORT: 5432
+      PAGER: cat
+      DATE: 2017-05-19
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: apt-get install postgresql
+
+      - run: make init
+
+      - name: Run commands
+        run: |
+          make download
+          make alerts
+          make positions
+          make tripupdates
+
+      - name: Check on results
+        run: |
+          psql -c "SELECT * FROM rt.vehicle_positions LIMIT 10"
+          psql -c "SELECT * FROM rt.trip_updates LIMIT 10"
+          psql -c "SELECT * FROM rt.alerts LIMIT 10"

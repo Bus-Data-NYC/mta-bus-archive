@@ -1,3 +1,4 @@
+BEGIN;
 CREATE SCHEMA rt;
 
 CREATE TYPE rt.alertcause AS ENUM (
@@ -62,8 +63,8 @@ CREATE TABLE rt.alerts (
     mid bigint REFERENCES rt.messages (oid) ON DELETE CASCADE,
     start timestamp with time zone,
     "end" timestamp with time zone,
-    cause alertcause,
-    effect alerteffect,
+    cause rt.alertcause,
+    effect rt.alerteffect,
     url text,
     header_text text,
     description_text text
@@ -87,7 +88,7 @@ CREATE TABLE rt.trip_updates (
     route_id text,
     trip_start_time interval,
     trip_start_date date,
-    schedule_relationship tripschedule,
+    schedule_relationship rt.tripschedule,
     vehicle_id text,
     vehicle_label text,
     vehicle_license_plate text,
@@ -103,7 +104,7 @@ CREATE TABLE rt.stop_time_updates (
     departure_delay integer,
     departure_time timestamp with time zone,
     departure_uncertainty integer,
-    schedule_relationship stoptimeschedule,
+    schedule_relationship rt.stoptimeschedule,
     trip_id text
 );
 CREATE TABLE rt.vehicle_positions (
@@ -122,12 +123,13 @@ CREATE TABLE rt.vehicle_positions (
     speed numeric(4,2),
     stop_id text,
     stop_sequence int,
-    stop_status stopstatus,
-    occupancy_status occupancystatus,
-    congestion_level congestionlevel,
+    stop_status rt.stopstatus,
+    occupancy_status rt.occupancystatus,
+    congestion_level rt.congestionlevel,
     progress int,
     block_assigned text,
     dist_along_route numeric,
     dist_from_stop numeric,
-    CONSTRAINT rt_vehicle_positions_pkey PRIMARY KEY ("timestamp", vehicle_id)
+    CONSTRAINT vehicle_positions_pkey PRIMARY KEY ("timestamp", vehicle_id)
 );
+COMMIT;
