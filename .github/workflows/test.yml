@@ -24,7 +24,7 @@ jobs:
       PGHOST: postgres
       PGUSER: postgres
       PGPASSWORD: password
-      PGDATABASE: postgres
+      PGDATABASE: db
       PGPORT: 5432
       PAGER: cat
       DATE: 2017-05-19
@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: sudo apt-get install postgresql
+        run: sudo apt-get install postgresql-client
 
       - run: make init
 

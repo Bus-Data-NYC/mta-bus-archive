@@ -98,7 +98,7 @@ else
 
 # Download past data
 
-ARCHIVE_COLS = timestamp,trip_id, \
+ARCHIVE_COLS ?= timestamp,trip_id, \
 	route_id,trip_start_time,trip_start_date, \
 	vehicle_id,vehicle_label,vehicle_license_plate,	\
 	latitude,longitude,bearing,speed,stop_id, \
