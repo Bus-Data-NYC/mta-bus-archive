@@ -9,7 +9,8 @@ jobs:
     services:
       db:
         image: postgis/postgis:10-2.5
-        ports: [5432:5432]
+        ports:
+          - 5432:5432
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
