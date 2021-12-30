@@ -9,6 +9,8 @@ jobs:
     services:
       db:
         image: postgis/postgis:10-2.5
+        ports:
+          - 5432:5432
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -16,18 +18,15 @@ jobs:
           PGUSER: postgres
         options: >-
           --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 1s
+          --health-timeout 30s
+          --health-retries 10
           --health-start-period 2s
     env:
       PGHOST: localhost
       PGUSER: postgres
       PGPASSWORD: password
-      PGDATABASE: db
-      PGPORT: 5432
       PAGER: cat
-      DATE: 2017-05-19
 
     steps:
       - uses: actions/checkout@v2
@@ -39,17 +38,25 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
-        run: sudo apt-get install postgresql-client
+      - name: Install Python requirements
+        run: |
+          pip install wheel
+          pip install -r requirements.txt
 
       - run: make init
 
-      - name: Run commands
+      - name: Fetch realtime data
         run: |
-          make download
           make alerts
           make positions
           make tripupdates
+
+      - name: Fetch archives
+        run: make -f download.mk download load
+        env:
+          YEAR: 2020
+          MONTH: 12
+          DAY: 25
 
       - name: Check on results
         run: |

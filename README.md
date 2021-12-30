@@ -30,12 +30,7 @@ make install
 
 Download a (UTC) day from [data.mytransit.nyc](http://data.mytransit.nyc), and import into the Postgres database `dbname`:
 ```
-make download DATE=2016-12-31
-```
-
-The same, for MySQL:
-```
-make mysql_download DATE=2016-12-31
+make -f download.mk download DATE=2016-12-31
 ```
 
 ## Scraping
@@ -69,18 +64,6 @@ make alerts
 
 The included `crontab` shows an example setup for downloading data from the MTA API. It assumes that this repository is saved in `~/mta-bus-archive`. Fill-in the `PG_DATABASE` and `BUSTIME_API_KEY` variables before using.
 
-# Setting up Postgres in CentOS
-
-Pick a database name.  In this example it's `mydbname`.
-
-```
-export PGDATABASE=mydbname
-export PGUSER=myusername
-sudo make install  # downloads requirements
-sudo make create  # initializes postgresql
-sudo make init
-```
-
 ## Uploading files to Google Cloud
 
 # Setup
@@ -96,12 +79,10 @@ Next, create a bucket for the data using the [Google Cloud Console](https://cons
 
 You've now authenticated yourself to the Google API. You'll now be able to run a command like:
 ```
-make -e gcloud DATE=2017-07-14 PG_DATABASE=mydbname MODE=upload
+make -e gcloud DATE=2017-07-14 PG_DATABASE=mydbname
 ```
 
 By default, the Google Cloud bucket will have the same name as the database. Use the variable `GOOGLE_BUCKET` to customize it.
-
-Note the `MODE=upload` – this tells the Makefile to use the set of commands
 
 # License
 

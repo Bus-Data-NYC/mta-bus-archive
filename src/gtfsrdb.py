@@ -33,6 +33,7 @@ from psycopg2.extras import execute_values
 import requests
 import google.protobuf
 import gtfs_realtime_pb2
+
 # import nyct_subway_pb2
 import model
 
@@ -41,20 +42,22 @@ INSERT = "INSERT INTO {table} ({columns}) VALUES %s ON CONFLICT DO NOTHING"
 
 
 def insert_stmt(table, columns):
-    return INSERT.format(table=table, columns=', '.join(columns)).strip()
+    return INSERT.format(table=table, columns=", ".join(columns)).strip()
 
 
 def insert_stmt_returning(table, columns, returning):
-    placeholders = '(' + ('%s, ' * len(columns)).strip(' ,') + ')'
+    placeholders = "(" + ("%s, " * len(columns)).strip(" ,") + ")"
     return (
-        INSERT.format(table=table, columns=', '.join(columns)) % placeholders
-    ) + ' RETURNING ' + returning
+        (INSERT.format(table=table, columns=", ".join(columns)) % placeholders)
+        + " RETURNING "
+        + returning
+    )
 
 
 def fromtimestamp(timestamp):
     try:
         if timestamp == 0:
-            raise TypeError('Ignoring timestamp at epoch')
+            raise TypeError("Ignoring timestamp at epoch")
         return datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
 
     except TypeError:
@@ -62,9 +65,9 @@ def fromtimestamp(timestamp):
 
 
 def get_translated(translation, lang=None):
-    '''Get a specific translation from a TranslatedString.'''
+    """Get a specific translation from a TranslatedString."""
     # If we don't find the requested language, return this
-    lang = lang or 'EN'
+    lang = lang or "EN"
 
     if not translation:
         # If empty, return.
@@ -82,7 +85,7 @@ def start_logger(level):
     logger = logging.getLogger()
     logger.setLevel(level)
     loghandler = logging.StreamHandler(sys.stdout)
-    logformatter = logging.Formatter(fmt='%(message)s')
+    logformatter = logging.Formatter(fmt="%(message)s")
     loghandler.setFormatter(logformatter)
     logger.addHandler(loghandler)
 
@@ -102,13 +105,15 @@ def load_message(url):
         try:
             fm.ParseFromString(r.content)
         except (RuntimeWarning, google.protobuf.message.DecodeError) as e:
-            logging.error('ERROR: %s in %s', e, url)
+            logging.error("ERROR: %s in %s", e, url)
             return fm, e
     # Check the feed version
-    if fm.entity and fm.header.gtfs_realtime_version != '1.0':
-        logging.warning('WARNING: feed version has changed. Expected 1.0, found %s',
-                        fm.header.gtfs_realtime_version)
-        logging.warning('file: %s', url)
+    if fm.entity and fm.header.gtfs_realtime_version != "1.0":
+        logging.warning(
+            "WARNING: feed version has changed. Expected 1.0, found %s",
+            fm.header.gtfs_realtime_version,
+        )
+        logging.warning("file: %s", url)
 
     return fm, None
 
@@ -140,27 +145,27 @@ def parse_vehicle(entity):
 
 def insert_vehicles(cursor, messageid, entities):
     cols = [
-        'mid',
-        'trip_id',
-        'route_id',
-        'trip_start_time',
-        'trip_start_date',
-        'stop_id',
-        'stop_sequence',
-        'stop_status',
-        'vehicle_id',
-        'vehicle_label',
-        'vehicle_license_plate',
-        'latitude',
-        'longitude',
-        'bearing',
-        'speed',
-        'occupancy_status',
-        'congestion_level',
-        'timestamp',
+        "mid",
+        "trip_id",
+        "route_id",
+        "trip_start_time",
+        "trip_start_date",
+        "stop_id",
+        "stop_sequence",
+        "stop_status",
+        "vehicle_id",
+        "vehicle_label",
+        "vehicle_license_plate",
+        "latitude",
+        "longitude",
+        "bearing",
+        "speed",
+        "occupancy_status",
+        "congestion_level",
+        "timestamp",
     ]
 
-    sql = insert_stmt('rt.vehicle_positions', cols)
+    sql = insert_stmt("rt.vehicle_positions", cols)
     parsed = ([messageid] + parse_vehicle(e) for e in entities if e.vehicle.ByteSize())
     execute_values(cursor, sql, list(parsed))
 
@@ -189,39 +194,39 @@ def parse_informed_entity(entity):
         entity.trip.trip_id,  # trip_id
         entity.trip.route_id,  # trip_route_id
         entity.trip.start_time or None,  # trip_start_time
-        entity.trip.start_date or None  # trip_start_date
+        entity.trip.start_date or None,  # trip_start_date
     )
 
 
 def insert_alerts(cursor, messageid, entities):
     alert_cols = (
-        'mid',
-        'start',
+        "mid",
+        "start",
         '"end"',
-        'cause',
-        'effect',
-        'url',
-        'header_text',
-        'description_text'
+        "cause",
+        "effect",
+        "url",
+        "header_text",
+        "description_text",
     )
     entity_cols = (
-        'agency_id',
-        'route_id',
-        'route_type',
-        'stop_id',
-        'trip_id',
-        'trip_route_id',
-        'trip_start_time',
-        'trip_start_date',
-        'alert_id'
+        "agency_id",
+        "route_id",
+        "route_type",
+        "stop_id",
+        "trip_id",
+        "trip_route_id",
+        "trip_start_time",
+        "trip_start_date",
+        "alert_id",
     )
 
     alerts = [e.alert for e in entities if e.alert.ByteSize()]
     if not alerts:
         return
 
-    alertsql = insert_stmt_returning('rt.alerts', alert_cols, 'oid')
-    selectorsql = insert_stmt('rt.entity_selectors', entity_cols)
+    alertsql = insert_stmt_returning("rt.alerts", alert_cols, "oid")
+    selectorsql = insert_stmt("rt.entity_selectors", entity_cols)
 
     for alert in alerts:
         parsed = parse_alert(alert)
@@ -241,11 +246,13 @@ def parse_trip(trip_update):
         trip_update.trip.route_id,  # route_id
         trip_update.trip.start_time or None,  # trip_start_time
         trip_update.trip.start_date or None,  # trip_start_date
-        getenum(model.TripSchedule, trip_update.trip.schedule_relationship),  # schedule_relationship
+        getenum(
+            model.TripSchedule, trip_update.trip.schedule_relationship
+        ),  # schedule_relationship
         trip_update.vehicle.id,  # vehicle_id
         trip_update.vehicle.label,  # vehicle_label
         trip_update.vehicle.license_plate,  # vehicle_license_plate
-        fromtimestamp(trip_update.timestamp)  # timestamp
+        fromtimestamp(trip_update.timestamp),  # timestamp
     ]
 
 
@@ -259,28 +266,30 @@ def parse_stoptimeupdate(entity):
         entity.departure.delay or None,  # departure_delay
         fromtimestamp(entity.departure.time),  # departure_time
         entity.departure.uncertainty or None,  # departure_uncertainty
-        getenum(model.StopTimeSchedule, entity.schedule_relationship, 2),  # schedule_relationship
+        getenum(
+            model.StopTimeSchedule, entity.schedule_relationship, 2
+        ),  # schedule_relationship
     ]
 
 
 def insert_trips(cursor, messageid, entities):
     cols = (
-        'mid',
-        'trip_id',
-        'route_id',
-        'trip_start_time',
-        'trip_start_date',
-        'schedule_relationship',
-        'vehicle_id',
-        'vehicle_label',
-        'vehicle_license_plate',
-        'timestamp',
+        "mid",
+        "trip_id",
+        "route_id",
+        "trip_start_time",
+        "trip_start_date",
+        "schedule_relationship",
+        "vehicle_id",
+        "vehicle_label",
+        "vehicle_license_plate",
+        "timestamp",
     )
     trips = [e.trip_update for e in entities if e.trip_update.ByteSize()]
     if not trips:
         return
 
-    tripsql = insert_stmt_returning('rt.trip_updates', cols, 'oid')
+    tripsql = insert_stmt_returning("rt.trip_updates", cols, "oid")
 
     for trip in trips:
         cursor.execute(tripsql, [messageid] + parse_trip(trip))
@@ -288,22 +297,22 @@ def insert_trips(cursor, messageid, entities):
 
 def insert_stoptime_updates(cursor, messageid, entities):
     stu_cols = (
-        'stop_sequence',
-        'stop_id',
-        'arrival_delay',
-        'arrival_time',
-        'arrival_uncertainty',
-        'departure_delay',
-        'departure_time',
-        'departure_uncertainty',
-        'schedule_relationship',
-        'trip_update_id'
+        "stop_sequence",
+        "stop_id",
+        "arrival_delay",
+        "arrival_time",
+        "arrival_uncertainty",
+        "departure_delay",
+        "departure_time",
+        "departure_uncertainty",
+        "schedule_relationship",
+        "trip_update_id",
     )
     trips = [e.trip_update for e in entities if e.trip_update.ByteSize()]
     if not trips:
         return
 
-    sql = insert_stmt('rt.stop_time_updates', stu_cols)
+    sql = insert_stmt("rt.stop_time_updates", stu_cols)
 
     for trip in trips:
         trip_id = parse_trip(trip)[0]
@@ -317,7 +326,7 @@ def parse_replacement_period(entity):
 
 
 def insert_header(cursor, message):
-    sql = insert_stmt_returning('rt.messages', ['"timestamp"'], 'oid')
+    sql = insert_stmt_returning("rt.messages", ['"timestamp"'], "oid")
     execute_values(cursor, sql, [(fromtimestamp(message.header.timestamp),)])
     messageid = cursor.fetchone()[0]
     # nyct_feed_header = message.header.Extensions[nyct_subway_pb2.nyct_feed_header]
@@ -330,19 +339,21 @@ def insert_header(cursor, message):
 
 
 def insert_error(cursor, filename, error):
-    sql = insert_stmt("rt.failures", ('filename', 'error'))
+    sql = insert_stmt("rt.failures", ("filename", "error"))
     execute_values(cursor, sql, [[filename, error]])
 
 
 def connection_params():
     pg = {
-        'PGUSER': 'user',
-        'PGHOST': 'host',
-        'PGPORT': 'port',
-        'PGPASSWORD': 'password',
-        'PGPASSFILE': 'passfile',
+        "PGUSER": "user",
+        "PGHOST": "host",
+        "PGPORT": "port",
+        "PGDATABASE": "dbname",
+        "PGPASSWORD": "password",
+        "PGPASSFILE": "passfile",
+        "PGSERVICE": "service",
     }
-    params = {'dbname': os.environ.get('PGDATABASE', getpass.getuser())}
+    params = {}
     params.update({v: os.environ[k] for k, v in pg.items() if k in os.environ})
     return params
 
@@ -350,15 +361,20 @@ def connection_params():
 def main():
     desc = """
         Insert GTFS-rt data into a PostgreSQL database.
-        By default, a local connection to your user's database will be created.
-        To specify other connection parameters, use the standard PG* environment variables.
+        Specify connection parameters using the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
-    parser.add_argument('--trip-updates', help='Fetch trip updates', action='store_true')
-    parser.add_argument('--stoptime-updates', help='Fetch stop time updates', action='store_true')
-    parser.add_argument('--alerts', help='Fetch alerts', action='store_true')
-    parser.add_argument('--vehicle-positions', help='Fetch vehicle positions', action='store_true')
-    parser.add_argument('url', help='GTFS-RT API endpoint')
+    parser.add_argument(
+        "--trip-updates", help="Fetch trip updates", action="store_true"
+    )
+    parser.add_argument(
+        "--stoptime-updates", help="Fetch stop time updates", action="store_true"
+    )
+    parser.add_argument("--alerts", help="Fetch alerts", action="store_true")
+    parser.add_argument(
+        "--vehicle-positions", help="Fetch vehicle positions", action="store_true"
+    )
+    parser.add_argument("url", help="GTFS-RT API endpoint")
 
     args = parser.parse_args()
 
@@ -373,11 +389,11 @@ def main():
     try:
         with psycopg2.connect(**connection_params()) as conn:
             with conn.cursor() as cursor:
-                logging.debug('Opening %s', args.url)
+                logging.debug("Opening %s", args.url)
                 message, error = load_message(args.url)
 
                 if error or not message.ByteSize():
-                    errormessage = getattr(error, 'message', 'ByteSize is 0')
+                    errormessage = getattr(error, "message", "ByteSize is 0")
                     insert_error(cursor, args.url, errormessage)
                     return
 
@@ -394,5 +410,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
