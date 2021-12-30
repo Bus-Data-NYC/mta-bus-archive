@@ -27,7 +27,6 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: password
       PAGER: cat
-      DATE: 2017-05-19
 
     steps:
       - uses: actions/checkout@v2
@@ -46,12 +45,18 @@ jobs:
 
       - run: make init
 
-      - name: Run commands
+      - name: Fetch realtime data
         run: |
-          make download
           make alerts
           make positions
           make tripupdates
+
+      - name: Fetch archives
+        run: make -f download.mk download load
+        env:
+          YEAR: 2020
+          MONTH: 12
+          DAY: 25
 
       - name: Check on results
         run: |
