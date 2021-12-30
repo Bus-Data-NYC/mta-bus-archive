@@ -39,8 +39,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
-        run: sudo apt-get install postgresql-client
+      - run: pip install -r requirements.txt
 
       - run: make init
 
