@@ -361,8 +361,7 @@ def connection_params():
 def main():
     desc = """
         Insert GTFS-rt data into a PostgreSQL database.
-        By default, a local connection to your user's database will be created.
-        To specify other connection parameters, use the standard PG* environment variables.
+        Specify connection parameters using the standard PG* environment variables.
     """
     parser = ArgumentParser(description=desc)
     parser.add_argument(
