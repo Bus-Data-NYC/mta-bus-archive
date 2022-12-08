@@ -26,7 +26,7 @@ MESSAGE_COLS = oid,timestamp
 TRIP_UPDATE_COLS = oid,trip_id,route_id,trip_start_time,trip_start_date,\
 	schedule_relationship,vehicle_id,vehicle_label,vehicle_license_plate,timestamp,mid
 
-ALERT_COLS = oid,start,end,cause,effect,url,header_text,description_text,mid
+ALERT_COLS = oid,"start","end",cause,effect,url,header_text,description_text,mid
 
 ARCHIVE ?= s3
 
@@ -56,7 +56,7 @@ load-trip-updates: $(YEAR)/$(MONTH)/$(date)-bus-trip-updates.csv.xz
 
 load-alerts: $(YEAR)/$(MONTH)/$(date)-bus-alerts.csv.xz
 	$(xz) $< \
-	| $(psql) -c "COPY rt.alerts ($(ALERT_COLS)) FROM STDIN (FORMAT CSV, HEADER true)"
+	| $(psql) -c 'COPY rt.alerts ($(ALERT_COLS)) FROM STDIN (FORMAT CSV, HEADER true)'
 
 %.csv: %.csv.xz
 	xz -cd $< > $@
