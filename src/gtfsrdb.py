@@ -58,6 +58,11 @@ def fromtimestamp(timestamp):
     try:
         if timestamp == 0:
             raise TypeError("Ignoring timestamp at epoch")
+
+        # Some fields pass the timestamp in ms, some in sec
+        if timestamp > 568971820800:
+            timestamp = timestamp/1000.
+
         return datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
 
     except TypeError:
