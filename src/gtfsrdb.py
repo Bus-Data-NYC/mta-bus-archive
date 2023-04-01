@@ -63,6 +63,9 @@ def fromtimestamp(timestamp):
     except TypeError:
         return None
 
+    except ValueError:
+        raise ValueError("Error converting timestamp {}".format(timestamp))
+
 
 def get_translated(translation, lang=None):
     """Get a specific translation from a TranslatedString."""
